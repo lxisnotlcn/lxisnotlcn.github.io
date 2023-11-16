@@ -2,6 +2,15 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>http://example.com/2023/08/14/A%20multi-level%20collaborative%20framework%20for%20elastic%20stream%20computing%20systems/</loc>
+    
+    <lastmod>2023-11-16</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
     <loc>http://example.com/2023/11/16/hello-world/</loc>
     
     <lastmod>2023-11-16</lastmod>
@@ -55,6 +64,20 @@
   </url>
 
   
+  <url>
+    <loc>http://example.com/tags/stream-computing/</loc>
+    <lastmod>2023-11-16</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
 
+  
+  <url>
+    <loc>http://example.com/categories/%E8%AE%BA%E6%96%87/</loc>
+    <lastmod>2023-11-16</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
   
 </urlset>
