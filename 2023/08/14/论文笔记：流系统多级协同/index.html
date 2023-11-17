@@ -21,20 +21,43 @@
     var CONFIG = {"hostname":"example.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
   </script>
 
-  <meta name="description" content="A multi-level collaborative framework for elastic stream computing systems摘要 许多现有工作尝试从一个角度或层次上构建弹性系统，限制了性能的提高，本文提出弹性流计算系统的多机协同框架Mc-Stream，本文从以下几个方面介绍了解决方案：">
+  <meta name="description" content="A multi-level collaborative framework for elastic stream computing systems摘要 许多现有工作尝试从一个角度或层次上构建弹性系统，限制了性能的提高，本文提出弹性流计算系统的多机协同框架Mc-Stream，本文从以下几个方面介绍了解决方案：  大量实验表明，系统性能受位于不同级别的多个因素的影响。多级协同优化策略可以协调这些因素">
 <meta property="og:type" content="article">
-<meta property="og:title" content="A multi-level collaborative framework for elastic stream computing systems">
-<meta property="og:url" content="http://example.com/2023/08/14/A%20multi-level%20collaborative%20framework%20for%20elastic%20stream%20computing%20systems/index.html">
+<meta property="og:title" content="论文笔记：流系统多级协同">
+<meta property="og:url" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/index.html">
 <meta property="og:site_name" content="lxisnotlcn&#39;s blog">
-<meta property="og:description" content="A multi-level collaborative framework for elastic stream computing systems摘要 许多现有工作尝试从一个角度或层次上构建弹性系统，限制了性能的提高，本文提出弹性流计算系统的多机协同框架Mc-Stream，本文从以下几个方面介绍了解决方案：">
+<meta property="og:description" content="A multi-level collaborative framework for elastic stream computing systems摘要 许多现有工作尝试从一个角度或层次上构建弹性系统，限制了性能的提高，本文提出弹性流计算系统的多机协同框架Mc-Stream，本文从以下几个方面介绍了解决方案：  大量实验表明，系统性能受位于不同级别的多个因素的影响。多级协同优化策略可以协调这些因素">
 <meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230512134132457.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230512135225024.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230512135236570.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514131755082.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514131805679.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514131819042.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514132830763.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514132841434.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514134536845.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514135111526.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514150351269.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514150407430.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514153625528.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514154619823.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514161057568.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514164744224.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514165246118.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514200117190.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514200218536.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514202053554.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514210418096.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514210504097.png">
 <meta property="article:published_time" content="2023-08-14T07:08:00.000Z">
-<meta property="article:modified_time" content="2023-11-16T14:53:36.294Z">
+<meta property="article:modified_time" content="2023-11-17T04:23:05.705Z">
 <meta property="article:author" content="lxisnotlcn">
 <meta property="article:tag" content="stream computing">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230512134132457.png">
 
-<link rel="canonical" href="http://example.com/2023/08/14/A%20multi-level%20collaborative%20framework%20for%20elastic%20stream%20computing%20systems/">
+<link rel="canonical" href="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/">
 
 
 <script id="page-configurations">
@@ -47,7 +70,7 @@
   };
 </script>
 
-  <title>A multi-level collaborative framework for elastic stream computing systems | lxisnotlcn's blog</title>
+  <title>论文笔记：流系统多级协同 | lxisnotlcn's blog</title>
   
 
 
@@ -168,7 +191,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2023/08/14/A%20multi-level%20collaborative%20framework%20for%20elastic%20stream%20computing%20systems/">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/jojo.png">
@@ -181,7 +204,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          A multi-level collaborative framework for elastic stream computing systems
+          论文笔记：流系统多级协同
         </h1>
 
         <div class="post-meta">
@@ -200,7 +223,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-11-16 22:53:36" itemprop="dateModified" datetime="2023-11-16T22:53:36+08:00">2023-11-16</time>
+                <time title="修改时间：2023-11-17 12:23:05" itemprop="dateModified" datetime="2023-11-17T12:23:05+08:00">2023-11-17</time>
               </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
@@ -208,7 +231,7 @@
               </span>
               <span class="post-meta-item-text">分类于</span>
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E8%AE%BA%E6%96%87/" itemprop="url" rel="index"><span itemprop="name">论文</span></a>
+                  <a href="/categories/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0/" itemprop="url" rel="index"><span itemprop="name">论文笔记</span></a>
                 </span>
             </span>
 
@@ -224,22 +247,22 @@
 
       
         <h1 id="A-multi-level-collaborative-framework-for-elastic-stream-computing-systems"><a href="#A-multi-level-collaborative-framework-for-elastic-stream-computing-systems" class="headerlink" title="A multi-level collaborative framework for elastic stream computing systems"></a>A multi-level collaborative framework for elastic stream computing systems</h1><p><strong>摘要</strong> 许多现有工作尝试从一个角度或层次上构建弹性系统，限制了性能的提高，本文提出弹性流计算系统的多机协同框架Mc-Stream，本文从以下几个方面介绍了解决方案：</p>
-<span id="more"></span>
-
 <ol>
 <li>大量实验表明，系统性能受位于不同级别的多个因素的影响。<strong>多级协同优化策略</strong>可以协调这些因素，并更大程度地优化性能</li>
 <li>建模，构建了一个<strong>系统模型</strong>来解释多级协作框架，创建了拓扑模型、数据模型和分组模型</li>
 <li>系统性能在多个级别（用户级别、实例级、调度级别和资源级别）进行<strong>优化</strong></li>
 <li>基于Storm实现了Mc-Stream，实验结果</li>
 </ol>
+<span id="more"></span>
+
 <h2 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h2><p>以数据为中心，而不是以计算为中心</p>
 <p>流的属性决定了需要弹性，调度是实现弹性的关键之一，但调度问题是NP难的</p>
 <h2 id="观察与动机"><a href="#观察与动机" class="headerlink" title="观察与动机"></a>观察与动机</h2><p>为了找到影响系统性能的重要因素，我们在Storm上设计了一系列实验</p>
-<h3 id="2-1-实验环境"><a href="#2-1-实验环境" class="headerlink" title="2.1 实验环境"></a>2.1 实验环境</h3><p>![image-20230512134132457](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230512134132457.png)</p>
+<h3 id="2-1-实验环境"><a href="#2-1-实验环境" class="headerlink" title="2.1 实验环境"></a>2.1 实验环境</h3><p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230512134132457.png" alt="image-20230512134132457"></p>
 <p>35台机器，以上三类，Centos6.3系统、Storm1.2.2，一个节点运行Nimbus子系统、两个节点运行zookeeper子系统，剩下32个节点运行Supervisor子系统</p>
 <p>负载为Top_N和WorkCount</p>
-<p>![image-20230512135225024](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230512135225024.png)</p>
-<p>![image-20230512135236570](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230512135236570.png)</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230512135225024.png" alt="image-20230512135225024"></p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230512135236570.png" alt="image-20230512135236570"></p>
 <h3 id="2-2-观察"><a href="#2-2-观察" class="headerlink" title="2.2 观察"></a>2.2 观察</h3><ul>
 <li>数据中心（物理机）（DC）的平均负载均衡（ALB）——系统负载均衡，计算：时间[0,t]DC平均CPU利用率的标准差</li>
 <li>流应用的平均时延（AL）——系统时延，计算：每个流应用的平均时延</li>
@@ -251,26 +274,26 @@
 <p>用户级别：用户构建流应用程序，产生流拓扑图，提交处理</p>
 <p>应用程序的总数是影响总体性能的关键因素之一</p>
 <p>当数据流输入速率为1000元组&#x2F;秒时，随应用程序数增长，三者变化如图：</p>
-<p>![image-20230514131755082](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230514131755082.png)</p>
-<p>![image-20230514131805679](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230514131805679.png)</p>
-<p>![image-20230514131819042](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230514131819042.png)</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514131755082.png" alt="image-20230514131755082"></p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514131805679.png" alt="image-20230514131805679"></p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514131819042.png" alt="image-20230514131819042"></p>
 </li>
 <li><p>实例级</p>
 <p>实例级别：拓扑图的顶点的实例数量</p>
 <p>输入速率2000元组&#x2F;秒</p>
-<p>![image-20230514132830763](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230514132830763.png)</p>
-<p>![image-20230514132841434](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230514132841434.png)</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514132830763.png" alt="image-20230514132830763"></p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514132841434.png" alt="image-20230514132841434"></p>
 </li>
 <li><p>调度级</p>
 <p>调度级别：实例根据调度策略放到不同的DC的节点中</p>
 <p>拓扑在被提交之后一般不能改变，运行时数据流、负载等会发生改变</p>
 <p>时间[0,19]、[20,39]、[40,60]的输入速率分别为1000元组&#x2F;秒、2000元组&#x2F;秒、1000元组&#x2F;秒，速率变了之后拓扑也会重新调度</p>
-<p>![image-20230514134536845](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230514134536845.png)</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514134536845.png" alt="image-20230514134536845"></p>
 </li>
 <li><p>资源级</p>
 <p>资源级别：一般来说，资源越多性能越好，但并不适用于分布式流计算环境，由于网络延迟响应时间等因素</p>
 <p>两个wordcount和两个Top_N程序</p>
-<p>![image-20230514135111526](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230514135111526.png)</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514135111526.png" alt="image-20230514135111526"></p>
 </li>
 </ol>
 <p>用户级：流应用数量对性能有影响</p>
@@ -288,8 +311,8 @@
 <h3 id="3-1-拓扑模型"><a href="#3-1-拓扑模型" class="headerlink" title="3.1 拓扑模型"></a>3.1 拓扑模型</h3><p>略</p>
 <h3 id="3-2-数据模型"><a href="#3-2-数据模型" class="headerlink" title="3.2 数据模型"></a>3.2 数据模型</h3><p>略</p>
 <h3 id="3-3-分组模型"><a href="#3-3-分组模型" class="headerlink" title="3.3 分组模型"></a>3.3 分组模型</h3><p>多并行度（实例），不同实例处理不同键组</p>
-<p>![image-20230514150351269](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230514150351269.png)</p>
-<p>![image-20230514150407430](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230514150407430.png)</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514150351269.png" alt="image-20230514150351269"></p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514150407430.png" alt="image-20230514150407430"></p>
 <h2 id="问题陈述"><a href="#问题陈述" class="headerlink" title="问题陈述"></a>问题陈述</h2><p>基于以上建模，我们将问题形式化定义为优化每个顶点的实例数、确定顶点实例的数据流负载比例、将实例部署到DC的拓扑中，分别位于实例级、数据流级和调度级</p>
 <h3 id="4-1-优化实例数"><a href="#4-1-优化实例数" class="headerlink" title="4.1 优化实例数"></a>4.1 优化实例数</h3><p>对于顶点$v_i \in V(G_{LT})$</p>
 <p>目标：$max(t(V_i)) \ and	\ min(l(v_i))$</p>
@@ -299,38 +322,38 @@
 <p>对于顶点$v_i \in V(G_{LT})$</p>
 <p>目标$min(lbd_{v_i})$</p>
 <p>负载平衡偏差$lbd_{v_i} &#x3D; \frac{1}{m_{v_i}}\sum^{m_{v_i}}<em>{k&#x3D;1}|len</em>{vik}-\overline{len_{v_i}}|$</p>
-<p>![image-20230514153625528](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230514153625528.png)</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514153625528.png" alt="image-20230514153625528"></p>
 <p>s.t. $1\le m_{v_i}\le m_{max}, \ v_i \in G_{LT}$</p>
 <h3 id="4-3-优化实例拓扑到计算节点的部署"><a href="#4-3-优化实例拓扑到计算节点的部署" class="headerlink" title="4.3 优化实例拓扑到计算节点的部署"></a>4.3 优化实例拓扑到计算节点的部署</h3><p>目标：$max(t(V_i)) \ and	\ min(l(v_i))$</p>
 <p>s.t. $\Delta tm \le tm_{min}$</p>
-<p>![image-20230514154619823](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230514154619823.png)</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514154619823.png" alt="image-20230514154619823"></p>
 <h2 id="Mc-Stream-架构与算法"><a href="#Mc-Stream-架构与算法" class="headerlink" title="Mc-Stream:架构与算法"></a>Mc-Stream:架构与算法</h2><p>本节讨论系统架构与用于实例管理、数据流重定向、调度管理、资源管理的算法</p>
 <h3 id="5-1-系统架构"><a href="#5-1-系统架构" class="headerlink" title="5.1 系统架构"></a>5.1 系统架构</h3><p>Mc-Stream架构包括四层：用户级、实例级、调度级、资源级</p>
-<p>![image-20230514161057568](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230514161057568.png)</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514161057568.png" alt="image-20230514161057568"></p>
 <p><strong>用户级</strong> 似乎没有做什么，使用Storm的接口</p>
 <p><strong>实例级</strong> 全是实例，选择一个合适的实例数</p>
 <p><strong>调度级</strong> 部署</p>
 <p><strong>资源级</strong> 需要充足资源</p>
 <h3 id="5-2-实例管理"><a href="#5-2-实例管理" class="headerlink" title="5.2 实例管理"></a>5.2 实例管理</h3><p>对于顶点$v_i\in V(G_{LT})$，$c_{v_i}$与$m_{v_i}$分别是$v_i$的计算复杂度与实例数量，$p_{v_i}$是顶点$v_i$运行节点的处理能力，对于$V(G_{LT})$中的每个顶点都要满足</p>
-<p>![image-20230514164744224](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230514164744224.png)</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514164744224.png" alt="image-20230514164744224"></p>
 <p>在流输入速率为$r_{v_1}$的情况下，$m_{v_1}$可以通过增大实例数，直到性能不再提升计算出来，算出$m_{v_1}$后可以根据上式计算其他m，算法1如下</p>
 <p><strong>算法1：</strong>实例管理</p>
-<p>![image-20230514165246118](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230514165246118.png)</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514165246118.png" alt="image-20230514165246118"></p>
 <h3 id="5-3-数据流重定向"><a href="#5-3-数据流重定向" class="headerlink" title="5.3 数据流重定向"></a>5.3 数据流重定向</h3><p>负载不平衡对性能有影响</p>
 <p>为了平衡负载，数据元组将根据每个实例当前空闲队列的长度进行分组</p>
 <p>对于$v_{ik}$，其被分配数据元组的概率可由式(10)计算</p>
-<p>![image-20230514200117190](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230514200117190.png)</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514200117190.png" alt="image-20230514200117190"></p>
 <p><strong>算法2：</strong>数据流重定向</p>
-<p>![image-20230514200218536](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230514200218536.png)</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514200218536.png" alt="image-20230514200218536"></p>
 <h3 id="5-4-调度管理"><a href="#5-4-调度管理" class="headerlink" title="5.4 调度管理"></a>5.4 调度管理</h3><p>由于数据流和资源总是变化，理论上最优实际上并不一定最优，因此，我们不用花费太多时间在调度级别上寻找理论上的最优调度，而是用更少的时间来寻找只满足用户服务水平目标(slo)的调度方案</p>
 <p><strong>算法3：</strong>调度实例拓扑</p>
-<p>![image-20230514202053554](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230514202053554.png)</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514202053554.png" alt="image-20230514202053554"></p>
 <h3 id="5-5-资源管理"><a href="#5-5-资源管理" class="headerlink" title="5.5 资源管理"></a>5.5 资源管理</h3><p>增加热点节点的资源或减少冷点资源的资源</p>
 <p>要将实例重新调度到另一个计算节点，需要满足以下条件:(1)实例拓扑连续运行;(2)数据流无丢失;(3)通过伪调度实现实例调度。</p>
 <p>实际就是获取调度计划后的实施</p>
-<p>![image-20230514210418096](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230514210418096.png)</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514210418096.png" alt="image-20230514210418096"></p>
 <p><strong>算法4：</strong>在线资源管理</p>
-<p>![image-20230514210504097](A multi-level collaborative framework for elastic stream computing systems&#x2F;image-20230514210504097.png)</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/image-20230514210504097.png" alt="image-20230514210504097"></p>
 <h2 id="实验评估"><a href="#实验评估" class="headerlink" title="实验评估"></a>实验评估</h2>
     </div>
 
@@ -352,8 +375,8 @@
     <div class="post-nav">
       <div class="post-nav-item"></div>
       <div class="post-nav-item">
-    <a href="/2023/11/16/hello-world/" rel="next" title="Hello World">
-      Hello World <i class="fa fa-chevron-right"></i>
+    <a href="/2023/08/14/%E8%AE%BA%E6%96%87Megaphone/" rel="next" title="论文笔记：Megaphone">
+      论文笔记：Megaphone <i class="fa fa-chevron-right"></i>
     </a></div>
     </div>
       </footer>
@@ -434,20 +457,20 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">2</span>
+          <span class="site-state-item-count">4</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-count">2</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-count">2</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -493,7 +516,7 @@
 
 <div class="theme-info">
   <div class="powered-by"></div>
-  <span class="post-count">博客全站共2.4k字</span>
+  <span class="post-count">博客全站共5k字</span>
 </div>
 
         

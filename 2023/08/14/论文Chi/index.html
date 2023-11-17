@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/ice-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/ice-16x16.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="Chi: A Scalable and Programmable Control Plane for Distributed Stream Processing Systems摘要 Chi主要是为了解决大规模集群下负载的变化性，以及难以进行静态参数调优、多种多样的用户SLO而提出的，具体来说，就是让流系统能够在运行时动态的重配置，Chi本质上是通过在原有流系统上嵌入一个控制平面，允许用户自定义控制">
+<meta property="og:type" content="article">
+<meta property="og:title" content="论文笔记：Chi">
+<meta property="og:url" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/index.html">
+<meta property="og:site_name" content="lxisnotlcn&#39;s blog">
+<meta property="og:description" content="Chi: A Scalable and Programmable Control Plane for Distributed Stream Processing Systems摘要 Chi主要是为了解决大规模集群下负载的变化性，以及难以进行静态参数调优、多种多样的用户SLO而提出的，具体来说，就是让流系统能够在运行时动态的重配置，Chi本质上是通过在原有流系统上嵌入一个控制平面，允许用户自定义控制">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925132626750.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925133113719.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925134021268.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925141316348.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925143733365.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925144325407.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925144504366.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925145257025.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925145452122.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925145917600.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925151422043.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925151845448.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925152114290.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925152234924.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925152354930.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925152738137.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925153224584.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925153422772.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925153650648.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925153910323.png">
+<meta property="article:published_time" content="2023-08-14T07:08:00.000Z">
+<meta property="article:modified_time" content="2023-11-17T04:20:37.327Z">
+<meta property="article:author" content="lxisnotlcn">
+<meta property="article:tag" content="stream computing">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925132626750.png">
+
+<link rel="canonical" href="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>论文笔记：Chi | lxisnotlcn's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+      <a target="_blank" rel="noopener" href="https://github.com/lxisnotlcn" class="github-corner" aria-label="View source on GitHub"><svg width="80" height="80" viewBox="0 0 250 250" style="fill:#151513; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a><style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}</style>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">lxisnotlcn's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/jojo.png">
+      <meta itemprop="name" content="lxisnotlcn">
+      <meta itemprop="description" content="我必将从这片石之海中重获自由">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="lxisnotlcn's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          论文笔记：Chi
+        </h1>
+
+        <div class="post-meta">
+
+          
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-08-14 15:08:00" itemprop="dateCreated datePublished" datetime="2023-08-14T15:08:00+08:00">2023-08-14</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-11-17 12:20:37" itemprop="dateModified" datetime="2023-11-17T12:20:37+08:00">2023-11-17</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0/" itemprop="url" rel="index"><span itemprop="name">论文笔记</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="Chi-A-Scalable-and-Programmable-Control-Plane-for-Distributed-Stream-Processing-Systems"><a href="#Chi-A-Scalable-and-Programmable-Control-Plane-for-Distributed-Stream-Processing-Systems" class="headerlink" title="Chi: A Scalable and Programmable Control Plane for Distributed Stream Processing Systems"></a>Chi: A Scalable and Programmable Control Plane for Distributed Stream Processing Systems</h1><p><strong>摘要</strong> Chi主要是为了解决大规模集群下负载的变化性，以及难以进行静态参数调优、多种多样的用户SLO而提出的，具体来说，就是让流系统能够在运行时动态的重配置，Chi本质上是通过在原有流系统上嵌入一个控制平面，允许用户自定义控制操作，从而可以监测到系统运行情况，进行动态重配置</p>
+<p>Chi以一个控制环路的方式实现这个控制平面，并且将控制消息嵌入到数据流中，从而重用了数据管道，Chi 引入了一种新的反应式编程模型和设计机制来异步执行控制策略，从而避免全局同步，最后实验证明了Chi的灵活性。</p>
+<span id="more"></span>
+
+<h2 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h2><p>首先就是说传统批处理已经无法满足需要，我们需要流处理！</p>
+<p>但是实现流处理所描述的优点有几个障碍：</p>
+<ol>
+<li>流负载有时间与空间的可变性，后面具体描述这两种可变性</li>
+<li>大规模集群有高度的硬件异构型以及不可预测的并发使用，这就使得算子分工很复杂</li>
+<li>现代流系统往往有很大的参数空间，使得调优变得很难，就是说现在的流系统都很庞大复杂，难以人为调优</li>
+<li>不同的用户使用一套流系统的时候可能会有不同的SLO（服务等级目标），需要不同的配置</li>
+</ol>
+<p>为了解决这些问题，我们需要对流系统进行运行时监控，获得反馈，然后进行动态重配置，如资源重新分配&#x2F;调度或者调优，我们就把负责这些控制操作的层叫做控制平面，与之相对应的就是数据平面（负责数据处理的层）</p>
+<p>于是Chi这个团队就和云运营商进行讨论，他们得出一个控制平面需要满足三点：</p>
+<ol>
+<li>应该能让用户自定义控制操作，以适应不同场景</li>
+<li>应该给用户提供简单直白的API</li>
+<li>控制开销应该尽可能地小</li>
+</ol>
+<p>不幸的是现在没有系统能满足这三点，于是就产生了我们的Chi</p>
+<p>Chi受标点符号机制的启发，将控制消息放到数据平面中，利用了数据平面的FIFO等特性，为了方便测试，他们团队在Flare上实现了Chi，Flare是他们团队自己的内部流系统</p>
+<h2 id="动机"><a href="#动机" class="headerlink" title="动机"></a>动机</h2><p>通过分析超过200000台服务器的日志数据，Chi团队进行了广泛的研究，得到了以下结果：</p>
+<p><strong>负载不可预测</strong> 检测到的负载变化如下图，首先每一行都有不同的特征，这就是空间可变性，而每一行有时会突然加深或者变浅，这就是时间可变性</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925132626750.png" alt="image-20220925132626750"></p>
+<p>我们以每分钟的增量来量化这种可变性，绘制成箱须图，如下：</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925133113719.png" alt="image-20220925133113719"></p>
+<p><strong>数据多样性</strong> 这里主要说的是key偏斜的问题，可能数据中的很大一部分都属于某几个key</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925134021268.png" alt="image-20220925134021268"></p>
+<p><strong>多租客控制策略</strong> 就是说很多用户对同一个流系统有不同的控制策略，比如同一个流系统传输日志，对于某些重要的信息日志需要精确一次语义，对于某些详细日志，只需要至少一次语义</p>
+<p>基于此，得出了控制平面的需要：</p>
+<ol>
+<li>高效且可扩展的反馈控制回路</li>
+<li>简单的控制接口</li>
+<li>对数据平面的影响最小化</li>
+</ol>
+<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>本节主要介绍数据流模型，略</p>
+<h2 id="设计"><a href="#设计" class="headerlink" title="设计"></a>设计</h2><p>我们主要关注Chi是如何实现上面的需求的</p>
+<p>首先，Chi重用数据平面高效的基础设施，还可以为用户提供熟悉的API，并且这种重用还可以提供天然的异步屏障，从而完成异步操作</p>
+<h3 id="4-1-概述"><a href="#4-1-概述" class="headerlink" title="4.1 概述"></a>4.1 概述</h3><p>Chi依赖于以下三个基本功能</p>
+<ol>
+<li>算子之间的管道必须支持精确一次与FIFO传递，当下游算子buffer要填满时触发背压</li>
+<li>算子按收到的顺序依次处理一个记录</li>
+<li>底层引擎能提供算子生命周期管理的能力，允许我们启动、停止算子</li>
+</ol>
+<p>1与2主要是用来保证一致性，目前很多流系统都已经实现了上述三个要求，包括Flink等</p>
+<p>系统引入了一个控制器，负责监视数据流行为并触发控制操作，用户自定义的控制操作提交给该控制器</p>
+<p>一个控制操作由控制环路来执行，由三阶段组成：</p>
+<ol>
+<li>控制器做出控制决策，并使用唯一标识符实例化控制消息，控制消息里包含每个算子的配置变换</li>
+<li>控制消息广播到所有源算子中，随数据在数据流图中传播，每个算子接收到控制消息后触发相应的操作</li>
+<li>sink算子将控制消息发送回控制器中，控制器进行后期处理</li>
+</ol>
+<p>例如下图：</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925141316348.png" alt="image-20220925141316348"></p>
+<h3 id="4-2-控制机制"><a href="#4-2-控制机制" class="headerlink" title="4.2 控制机制"></a>4.2 控制机制</h3><p>接下来我们描述了支撑 Chi 的核心机制</p>
+<h4 id="4-2-1-通过元拓扑进行图转变"><a href="#4-2-1-通过元拓扑进行图转变" class="headerlink" title="4.2.1 通过元拓扑进行图转变"></a>4.2.1 通过元拓扑进行图转变</h4><p>之前的例子中虽然很好的实现了控制操作，但还有一些实现细节没有讨论到，比如R3是何时被启动的，每次迁移可能会涉及到图拓扑的改变，本小节来描述如何实现图转变</p>
+<p>Chi通过一个中间拓扑图来完成迁移，定义原来的拓扑图为G，转变后的拓扑图为$G^*$，中间元拓扑为G’，迁移触发前，控制器将拓扑图G转变为G’，迁移完成后再修剪为$G^*$，G’ &#x3D; G ∪ $G^*$ ∪ $E_{V,V∗}$ 其中 $E_{V,V∗}$为G中影响$G^*$中状态的节点之间的边，这样就可以避免Flink中全部停止再迁移所引入的时延了，例如前面例子的元拓扑如下图：</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925143733365.png" alt="image-20220925143733365"></p>
+<p>但是这样会导致重配置期间对资源的利用率增加，数据流图的规模会扩大两倍，所以Chi又提出了一些优化：</p>
+<p><strong>状态不变性</strong> 如果一个控制操作没有改变算子的状态S，就可以合并两个算子，例如M1、M2</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925144325407.png" alt="image-20220925144325407"></p>
+<p><strong>无环不变性</strong> 如果合并两个算子不会引入新的环路，可以合并两个算子</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925144504366.png" alt="image-20220925144504366"></p>
+<p>这就解决了状态迁移期间不停止的问题，实现了需求1：控制回路</p>
+<h4 id="4-2-2-控制API"><a href="#4-2-2-控制API" class="headerlink" title="4.2.2 控制API"></a>4.2.2 控制API</h4><p>Chi的控制API能为开发人员提供不同维度的控制操作，包括空间维度：M算子与R算子行为不同，时间维度：R3收到第一次控制消息与第二次控制消息的行为不同。我们向用户提供以下功能：</p>
+<ul>
+<li><strong>配置注入</strong> 允许一条消息承担不同算子的配置（实现空间维度）</li>
+</ul>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925145257025.png" alt="image-20220925145257025"></p>
+<ul>
+<li><p><strong>响应式执行</strong> Chi提供了一系列响应式接口，OnBegin操作与OnNext操作行为自定义（时间维度）</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925145452122.png" alt="image-20220925145452122"></p>
+</li>
+</ul>
+<p><strong>阻塞行为</strong> 在之前状态迁移的例子中，我们采用了阻塞并等待对齐的方式等待控制消息，在某些情况下可能很耗费时间，Chi提供了阻塞消息与非阻塞消息两种类型，以满足不同需求，例如在监视流系统的情况下就不需要阻塞</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925145917600.png" alt="image-20220925145917600"></p>
+<p>由此满足了需求2：可用API</p>
+<h3 id="4-3-高级功能"><a href="#4-3-高级功能" class="headerlink" title="4.3 高级功能"></a>4.3 高级功能</h3><ul>
+<li>多控制器：Chi允许多个控制器同时存在，比如让每个控制器负责不同的功能，只要保证控制消息的可串行性，多个控制器就可以同时工作</li>
+<li>广播&#x2F;聚合树：避免多个source或者sink的情况下控制器成为瓶颈而引入</li>
+<li>处理拥塞、死锁：背压等待</li>
+<li>容错：消息–&gt;依赖底层数据平面；控制器–&gt;checkpoint</li>
+</ul>
+<h3 id="4-4-Chi与其他现有模型对比"><a href="#4-4-Chi与其他现有模型对比" class="headerlink" title="4.4 Chi与其他现有模型对比"></a>4.4 Chi与其他现有模型对比</h3><p><img src="/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925151422043.png" alt="image-20220925151422043"></p>
+<p>这里主要将Chi与不同流系统模型进行比较：BSP-based与record-at-a-time，SGC与ALC是这两种系统采用的方法</p>
+<p><strong>一致性</strong> BSP可以通过屏障达到一致性，Chi也可以实现BSP，而ALC不能满足一致性，Chi在非阻塞消息的情况下与之相同</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925151845448.png" alt="image-20220925151845448"></p>
+<h2 id="应用实例"><a href="#应用实例" class="headerlink" title="应用实例"></a>应用实例</h2><p><strong>持续监视</strong> </p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925152114290.png" alt="image-20220925152114290"></p>
+<p><strong>数据流重配置</strong> <img src="/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925152234924.png" alt="image-20220925152234924"></p>
+<p><strong>自动参数调优</strong> 结合前两个</p>
+<h2 id="实现-讨论"><a href="#实现-讨论" class="headerlink" title="实现&amp;讨论"></a>实现&amp;讨论</h2><p><strong>分布式运行时</strong> </p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925152354930.png" alt="image-20220925152354930"></p>
+<p>communication layer提供先进先出的精确一次传输管道，并且有背压</p>
+<p>message dispatcher&#x2F;multiplexer根据消息的类型调用相应的处理模块，并将其输出多路复用到通信层</p>
+<p>data processor与control processor根据消息执行相应操作</p>
+<p><strong>自定义序列化</strong></p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925152738137.png" alt="image-20220925152738137"></p>
+<p><strong>可移植性</strong> 如果底层系统不提供 FIFO 一次性消息传递，则移植communication layer，移植message dispatcher&#x2F;multiplexer并重用data processor</p>
+<h2 id="评估"><a href="#评估" class="headerlink" title="评估"></a>评估</h2><p><strong>控制平面影响数据平面了吗？</strong></p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925153224584.png" alt="image-20220925153224584"></p>
+<p><strong>繁忙的数据平面会限制控制平面吗？</strong></p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925153422772.png" alt="image-20220925153422772"></p>
+<p><strong>控制平面可扩展吗？</strong>对数增加</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925153650648.png" alt="image-20220925153650648"></p>
+<p><strong>适应性与容错</strong></p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87Chi/image-20220925153910323.png" alt="image-20220925153910323"></p>
+
+    </div>
+
+    
+    
+    
+
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/stream-computing/" rel="tag"># stream computing</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/08/14/%E8%AE%BA%E6%96%87Megaphone/" rel="prev" title="论文笔记：Megaphone">
+      <i class="fa fa-chevron-left"></i> 论文笔记：Megaphone
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/11/17/%E6%AC%A2%E8%BF%8E%E7%85%9C%E5%93%A5%E8%AE%BF%E9%97%AE/" rel="next" title="欢迎煜哥访问">
+      欢迎煜哥访问 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    
+  <div class="comments">
+    <div id="lv-container" data-id="city" data-uid="MTAyMC81OTIwNS8zNTY2Nw=="></div>
+  </div>
+  
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Chi-A-Scalable-and-Programmable-Control-Plane-for-Distributed-Stream-Processing-Systems"><span class="nav-number">1.</span> <span class="nav-text">Chi: A Scalable and Programmable Control Plane for Distributed Stream Processing Systems</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%8B%E7%BB%8D"><span class="nav-number">1.1.</span> <span class="nav-text">介绍</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8A%A8%E6%9C%BA"><span class="nav-number">1.2.</span> <span class="nav-text">动机</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%83%8C%E6%99%AF"><span class="nav-number">1.3.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%BE%E8%AE%A1"><span class="nav-number">1.4.</span> <span class="nav-text">设计</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E6%A6%82%E8%BF%B0"><span class="nav-number">1.4.1.</span> <span class="nav-text">4.1 概述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E6%8E%A7%E5%88%B6%E6%9C%BA%E5%88%B6"><span class="nav-number">1.4.2.</span> <span class="nav-text">4.2 控制机制</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#4-2-1-%E9%80%9A%E8%BF%87%E5%85%83%E6%8B%93%E6%89%91%E8%BF%9B%E8%A1%8C%E5%9B%BE%E8%BD%AC%E5%8F%98"><span class="nav-number">1.4.2.1.</span> <span class="nav-text">4.2.1 通过元拓扑进行图转变</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-2-2-%E6%8E%A7%E5%88%B6API"><span class="nav-number">1.4.2.2.</span> <span class="nav-text">4.2.2 控制API</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E9%AB%98%E7%BA%A7%E5%8A%9F%E8%83%BD"><span class="nav-number">1.4.3.</span> <span class="nav-text">4.3 高级功能</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-4-Chi%E4%B8%8E%E5%85%B6%E4%BB%96%E7%8E%B0%E6%9C%89%E6%A8%A1%E5%9E%8B%E5%AF%B9%E6%AF%94"><span class="nav-number">1.4.4.</span> <span class="nav-text">4.4 Chi与其他现有模型对比</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BA%94%E7%94%A8%E5%AE%9E%E4%BE%8B"><span class="nav-number">1.5.</span> <span class="nav-text">应用实例</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9E%E7%8E%B0-%E8%AE%A8%E8%AE%BA"><span class="nav-number">1.6.</span> <span class="nav-text">实现&amp;讨论</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AF%84%E4%BC%B0"><span class="nav-number">1.7.</span> <span class="nav-text">评估</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="lxisnotlcn"
+      src="/images/jojo.png">
+  <p class="site-author-name" itemprop="name">lxisnotlcn</p>
+  <div class="site-description" itemprop="description">我必将从这片石之海中重获自由</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">4</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/lxisnotlcn" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;lxisnotlcn" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:lxisnotlcn@gmail.com" title="E-Mail → mailto:lxisnotlcn@gmail.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2023-11 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">lxisnotlcn</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+<div class="theme-info">
+  <div class="powered-by"></div>
+  <span class="post-count">博客全站共5k字</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<script>
+NexT.utils.loadComments(document.querySelector('#lv-container'), () => {
+  window.livereOptions = {
+    refer: location.pathname.replace(CONFIG.root, '').replace('index.html', '')
+  };
+  (function(d, s) {
+    var j, e = d.getElementsByTagName(s)[0];
+    if (typeof LivereTower === 'function') { return; }
+    j = d.createElement(s);
+    j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+    j.async = true;
+    e.parentNode.insertBefore(j, e);
+  })(document, 'script');
+});
+</script>
+
+</body>
+</html>

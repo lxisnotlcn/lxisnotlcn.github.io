@@ -21,30 +21,36 @@
     var CONFIG = {"hostname":"example.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
   </script>
 
-  <meta name="description" content="我必将从这片石之海中重获自由">
-<meta property="og:type" content="website">
-<meta property="og:title" content="lxisnotlcn&#39;s blog">
-<meta property="og:url" content="http://example.com/index.html">
+  <meta name="description" content="Megaphone: Latency-conscious state migration for distributed streaming dataflows摘要 Megaphone应用于分布式数据流引擎的迁移，与其他迁移机制相比，Megaphone具有(i) 迁移可以细分为可配置的粒度以避免延迟峰值与(ii) 可以提前准备迁移以避免运行时协调的特点  迁移粒度可控 可提前迁移">
+<meta property="og:type" content="article">
+<meta property="og:title" content="论文笔记：Megaphone">
+<meta property="og:url" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Megaphone/index.html">
 <meta property="og:site_name" content="lxisnotlcn&#39;s blog">
-<meta property="og:description" content="我必将从这片石之海中重获自由">
+<meta property="og:description" content="Megaphone: Latency-conscious state migration for distributed streaming dataflows摘要 Megaphone应用于分布式数据流引擎的迁移，与其他迁移机制相比，Megaphone具有(i) 迁移可以细分为可配置的粒度以避免延迟峰值与(ii) 可以提前准备迁移以避免运行时协调的特点  迁移粒度可控 可提前迁移">
 <meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Megaphone/image-20220925161515263.png">
+<meta property="og:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Megaphone/image-20220925164904052.png">
+<meta property="article:published_time" content="2023-08-14T07:08:00.000Z">
+<meta property="article:modified_time" content="2023-11-17T04:18:59.502Z">
 <meta property="article:author" content="lxisnotlcn">
+<meta property="article:tag" content="stream computing">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Megaphone/image-20220925161515263.png">
 
-<link rel="canonical" href="http://example.com/">
+<link rel="canonical" href="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Megaphone/">
 
 
 <script id="page-configurations">
   // https://hexo.io/docs/variables.html
   CONFIG.page = {
     sidebar: "",
-    isHome : true,
-    isPost : false,
+    isHome : false,
+    isPost : true,
     lang   : 'zh-CN'
   };
 </script>
 
-  <title>lxisnotlcn's blog</title>
+  <title>论文笔记：Megaphone | lxisnotlcn's blog</title>
   
 
 
@@ -158,178 +164,10 @@
         <div class="content-wrap">
           
 
-          <div class="content index posts-expand">
+          <div class="content post posts-expand">
             
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2023/11/17/%E6%AC%A2%E8%BF%8E%E7%85%9C%E5%93%A5%E8%AE%BF%E9%97%AE/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/jojo.png">
-      <meta itemprop="name" content="lxisnotlcn">
-      <meta itemprop="description" content="我必将从这片石之海中重获自由">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="lxisnotlcn's blog">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/11/17/%E6%AC%A2%E8%BF%8E%E7%85%9C%E5%93%A5%E8%AE%BF%E9%97%AE/" class="post-title-link" itemprop="url">欢迎煜哥访问</a>
-        </h2>
-
-        <div class="post-meta">
-
-          
-            <i class="fa fa-thumb-tack"></i>
-            <font color=7D26CD>置顶</font>
-            <span class="post-meta-divider">|</span>
-          
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2023-11-17 12:24:50 / 修改时间：12:29:53" itemprop="dateCreated datePublished" datetime="2023-11-17T12:24:50+08:00">2023-11-17</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E6%97%A5%E5%B8%B8/" itemprop="url" rel="index"><span itemprop="name">日常</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
 
     
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="welcome-to-lxisnotlcn’s-blog"><a href="#welcome-to-lxisnotlcn’s-blog" class="headerlink" title="welcome to lxisnotlcn’s blog"></a>welcome to lxisnotlcn’s blog</h1><p>美照镇楼</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2023/11/17/%E6%AC%A2%E8%BF%8E%E7%85%9C%E5%93%A5%E8%AE%BF%E9%97%AE/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87Chi/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/jojo.png">
-      <meta itemprop="name" content="lxisnotlcn">
-      <meta itemprop="description" content="我必将从这片石之海中重获自由">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="lxisnotlcn's blog">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/08/14/%E8%AE%BA%E6%96%87Chi/" class="post-title-link" itemprop="url">论文笔记：Chi</a>
-        </h2>
-
-        <div class="post-meta">
-
-          
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2023-08-14 15:08:00" itemprop="dateCreated datePublished" datetime="2023-08-14T15:08:00+08:00">2023-08-14</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-11-17 12:20:37" itemprop="dateModified" datetime="2023-11-17T12:20:37+08:00">2023-11-17</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0/" itemprop="url" rel="index"><span itemprop="name">论文笔记</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="Chi-A-Scalable-and-Programmable-Control-Plane-for-Distributed-Stream-Processing-Systems"><a href="#Chi-A-Scalable-and-Programmable-Control-Plane-for-Distributed-Stream-Processing-Systems" class="headerlink" title="Chi: A Scalable and Programmable Control Plane for Distributed Stream Processing Systems"></a>Chi: A Scalable and Programmable Control Plane for Distributed Stream Processing Systems</h1><p><strong>摘要</strong> Chi主要是为了解决大规模集群下负载的变化性，以及难以进行静态参数调优、多种多样的用户SLO而提出的，具体来说，就是让流系统能够在运行时动态的重配置，Chi本质上是通过在原有流系统上嵌入一个控制平面，允许用户自定义控制操作，从而可以监测到系统运行情况，进行动态重配置</p>
-<p>Chi以一个控制环路的方式实现这个控制平面，并且将控制消息嵌入到数据流中，从而重用了数据管道，Chi 引入了一种新的反应式编程模型和设计机制来异步执行控制策略，从而避免全局同步，最后实验证明了Chi的灵活性。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2023/08/14/%E8%AE%BA%E6%96%87Chi/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
@@ -345,10 +183,9 @@
       <meta itemprop="name" content="lxisnotlcn's blog">
     </span>
       <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/08/14/%E8%AE%BA%E6%96%87Megaphone/" class="post-title-link" itemprop="url">论文笔记：Megaphone</a>
-        </h2>
+        <h1 class="post-title" itemprop="name headline">
+          论文笔记：Megaphone
+        </h1>
 
         <div class="post-meta">
 
@@ -389,20 +226,35 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <h1 id="Megaphone-Latency-conscious-state-migration-for-distributed-streaming-dataflows"><a href="#Megaphone-Latency-conscious-state-migration-for-distributed-streaming-dataflows" class="headerlink" title="Megaphone: Latency-conscious state migration for distributed streaming dataflows"></a>Megaphone: Latency-conscious state migration for distributed streaming dataflows</h1><p><strong>摘要</strong> Megaphone应用于分布式数据流引擎的迁移，与其他迁移机制相比，Megaphone具有(i) 迁移可以细分为可配置的粒度以避免延迟峰值与(ii) 可以提前准备迁移以避免运行时协调的特点</p>
+        <h1 id="Megaphone-Latency-conscious-state-migration-for-distributed-streaming-dataflows"><a href="#Megaphone-Latency-conscious-state-migration-for-distributed-streaming-dataflows" class="headerlink" title="Megaphone: Latency-conscious state migration for distributed streaming dataflows"></a>Megaphone: Latency-conscious state migration for distributed streaming dataflows</h1><p><strong>摘要</strong> Megaphone应用于分布式数据流引擎的迁移，与其他迁移机制相比，Megaphone具有(i) 迁移可以细分为可配置的粒度以避免延迟峰值与(ii) 可以提前准备迁移以避免运行时协调的特点</p>
 <ol>
 <li>迁移粒度可控</li>
 <li>可提前迁移</li>
 </ol>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2023/08/14/%E8%AE%BA%E6%96%87Megaphone/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
+<span id="more"></span>
+
+
+
+<h2 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h2><p>Megaphone基于这么一种思想，之前所有的状态迁移都是一次性全部迁移完成的，这会导致很大的瞬时时延，而Megaphone希望能够细粒度的迁移这些状态，以流式迁移的方式，代价是较长时间但是平滑的延迟峰值，Megaphone基于timely dataflow</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87Megaphone/image-20220925161515263.png" alt="image-20220925161515263"></p>
+<h2 id="背景与动机"><a href="#背景与动机" class="headerlink" title="背景与动机"></a>背景与动机</h2><h3 id="2-1-流系统的状态迁移"><a href="#2-1-流系统的状态迁移" class="headerlink" title="2.1 流系统的状态迁移"></a>2.1 流系统的状态迁移</h3><p>分布式流系统的状态迁移分为以下三种策略：</p>
+<ul>
+<li>stop-and-restart：系统在迁移之前保存，stop，迁移状态，最后重启，如Flink等</li>
+<li>Partial pause-and-resume：涉及少数算子迁移操作的情况下，只对一部分的算子进行状态迁移，仅暂停受影响的算子部分，其他算子正常进行处理，例如Seep等</li>
+<li>Dataflow Replication：为了最小化迁移性能损失，一些系统复制整个数据流或者他的子图，例如Gross</li>
+</ul>
+<p>这些系统要么延迟大，要么资源需求高</p>
+<h3 id="2-2-流数据流的实时迁移"><a href="#2-2-流数据流的实时迁移" class="headerlink" title="2.2 流数据流的实时迁移"></a>2.2 流数据流的实时迁移</h3><p>主要是受数据库系统中细粒度迁移的启发，Megaphone将细粒度迁移引入流系统，核心思想是将细粒度状态迁移与数据处理相结合，使用流处理器中常见的逻辑时间进行协调</p>
+<h2 id="状态迁移设计"><a href="#状态迁移设计" class="headerlink" title="状态迁移设计"></a>状态迁移设计</h2><p>我们来描述如何实现细粒度迁移</p>
+<h3 id="3-1-Timely-dataflow-concepts"><a href="#3-1-Timely-dataflow-concepts" class="headerlink" title="3.1 Timely dataflow concepts"></a>3.1 Timely dataflow concepts</h3><p>由于Megaphone是基于timely dataflow的，具体来讲是基于Naiad这个系统，我们只需要知道，这个系统当时是为了解决流处理系统对迭代计算的支持不足而提出的，而为了区分不同阶段的迭代流，Naiad的时间戳是多维的，所以时间戳的比较实际是一个偏序关系，所以Naiad中的边界（类似于Flink中的低水位）是一个时间戳集合，包含了各个维度时间戳的低水位</p>
+<p>timely dataflow与其他流系统类似：</p>
+<p><img src="/2023/08/14/%E8%AE%BA%E6%96%87Megaphone/image-20220925164904052.png" alt="image-20220925164904052"></p>
+<h3 id="3-2-配置更新"><a href="#3-2-配置更新" class="headerlink" title="3.2 配置更新"></a>3.2 配置更新</h3><p>状态迁移是由配置更新来驱动的，配置更新的形式为：update : (time, key, worker)，表示time之后与key相关联的所有状态都在worker中</p>
+<p>由于配置更新只是数据，用户可以通过引入他们认为合适的更新来推动迁移过程，由此实现了各种粒度的状态迁移</p>
+<p><strong>All-at-once migration</strong> 指定C1中的所有key在相同的time迁移到worker</p>
+<p><strong>Fluid migration</strong> 逐个key的引入(time, key, worker)</p>
+<p><strong>Batched migration</strong> 分批引入(time, key, worker)</p>
+<h3 id="3-3-Megaphone的机制"><a href="#3-3-Megaphone的机制" class="headerlink" title="3.3 Megaphone的机制"></a>3.3 Megaphone的机制</h3>
     </div>
 
     
@@ -410,112 +262,42 @@
     
 
     
+
       <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
+          <div class="post-tags">
+              <a href="/tags/stream-computing/" rel="tag"># stream computing</a>
+          </div>
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/jojo.png">
-      <meta itemprop="name" content="lxisnotlcn">
-      <meta itemprop="description" content="我必将从这片石之海中重获自由">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="lxisnotlcn's blog">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/" class="post-title-link" itemprop="url">论文笔记：流系统多级协同</a>
-        </h2>
-
-        <div class="post-meta">
-
-          
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2023-08-14 15:08:00" itemprop="dateCreated datePublished" datetime="2023-08-14T15:08:00+08:00">2023-08-14</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-11-17 12:23:05" itemprop="dateModified" datetime="2023-11-17T12:23:05+08:00">2023-11-17</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0/" itemprop="url" rel="index"><span itemprop="name">论文笔记</span></a>
-                </span>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="A-multi-level-collaborative-framework-for-elastic-stream-computing-systems"><a href="#A-multi-level-collaborative-framework-for-elastic-stream-computing-systems" class="headerlink" title="A multi-level collaborative framework for elastic stream computing systems"></a>A multi-level collaborative framework for elastic stream computing systems</h1><p><strong>摘要</strong> 许多现有工作尝试从一个角度或层次上构建弹性系统，限制了性能的提高，本文提出弹性流计算系统的多机协同框架Mc-Stream，本文从以下几个方面介绍了解决方案：</p>
-<ol>
-<li>大量实验表明，系统性能受位于不同级别的多个因素的影响。<strong>多级协同优化策略</strong>可以协调这些因素，并更大程度地优化性能</li>
-<li>建模，构建了一个<strong>系统模型</strong>来解释多级协作框架，创建了拓扑模型、数据模型和分组模型</li>
-<li>系统性能在多个级别（用户级别、实例级、调度级别和资源级别）进行<strong>优化</strong></li>
-<li>基于Storm实现了Mc-Stream，实验结果</li>
-</ol>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
         
-      
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/" rel="prev" title="论文笔记：流系统多级协同">
+      <i class="fa fa-chevron-left"></i> 论文笔记：流系统多级协同
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/08/14/%E8%AE%BA%E6%96%87Chi/" rel="next" title="论文笔记：Chi">
+      论文笔记：Chi <i class="fa fa-chevron-right"></i>
+    </a></div>
     </div>
-
-    
-    
-    
-
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
       </footer>
+    
   </article>
   
   
-  
-
-
   
 
 
 
           </div>
           
+    
+  <div class="comments">
+    <div id="lv-container" data-id="city" data-uid="MTAyMC81OTIwNS8zNTY2Nw=="></div>
+  </div>
+  
 
 <script>
   window.addEventListener('tabs:register', () => {
@@ -562,6 +344,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Megaphone-Latency-conscious-state-migration-for-distributed-streaming-dataflows"><span class="nav-number">1.</span> <span class="nav-text">Megaphone: Latency-conscious state migration for distributed streaming dataflows</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%8B%E7%BB%8D"><span class="nav-number">1.1.</span> <span class="nav-text">介绍</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%83%8C%E6%99%AF%E4%B8%8E%E5%8A%A8%E6%9C%BA"><span class="nav-number">1.2.</span> <span class="nav-text">背景与动机</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E6%B5%81%E7%B3%BB%E7%BB%9F%E7%9A%84%E7%8A%B6%E6%80%81%E8%BF%81%E7%A7%BB"><span class="nav-number">1.2.1.</span> <span class="nav-text">2.1 流系统的状态迁移</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E6%B5%81%E6%95%B0%E6%8D%AE%E6%B5%81%E7%9A%84%E5%AE%9E%E6%97%B6%E8%BF%81%E7%A7%BB"><span class="nav-number">1.2.2.</span> <span class="nav-text">2.2 流数据流的实时迁移</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%8A%B6%E6%80%81%E8%BF%81%E7%A7%BB%E8%AE%BE%E8%AE%A1"><span class="nav-number">1.3.</span> <span class="nav-text">状态迁移设计</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-Timely-dataflow-concepts"><span class="nav-number">1.3.1.</span> <span class="nav-text">3.1 Timely dataflow concepts</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E9%85%8D%E7%BD%AE%E6%9B%B4%E6%96%B0"><span class="nav-number">1.3.2.</span> <span class="nav-text">3.2 配置更新</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-Megaphone%E7%9A%84%E6%9C%BA%E5%88%B6"><span class="nav-number">1.3.3.</span> <span class="nav-text">3.3 Megaphone的机制</span></a></li></ol></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -692,6 +475,21 @@
 
   
 
+<script>
+NexT.utils.loadComments(document.querySelector('#lv-container'), () => {
+  window.livereOptions = {
+    refer: location.pathname.replace(CONFIG.root, '').replace('index.html', '')
+  };
+  (function(d, s) {
+    var j, e = d.getElementsByTagName(s)[0];
+    if (typeof LivereTower === 'function') { return; }
+    j = d.createElement(s);
+    j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+    j.async = true;
+    e.parentNode.insertBefore(j, e);
+  })(document, 'script');
+});
+</script>
 
 </body>
 </html>
