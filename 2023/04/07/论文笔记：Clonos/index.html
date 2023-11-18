@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/ice-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/ice-16x16.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="Clonos: Consistent Causal Recovery for Highly-Available Streaming Dataflows摘要 Clonos通过立即切到备用算子来实现快速的本地算子恢复，精确一次且高可用性，并且不需要算子确定性假设">
+<meta property="og:type" content="article">
+<meta property="og:title" content="论文笔记：Clonos">
+<meta property="og:url" content="http://example.com/2023/04/07/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9AClonos/index.html">
+<meta property="og:site_name" content="lxisnotlcn&#39;s blog">
+<meta property="og:description" content="Clonos: Consistent Causal Recovery for Highly-Available Streaming Dataflows摘要 Clonos通过立即切到备用算子来实现快速的本地算子恢复，精确一次且高可用性，并且不需要算子确定性假设">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2023/04/07/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9AClonos/image-20230405154828265.png">
+<meta property="og:image" content="http://example.com/2023/04/07/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9AClonos/image-20230405161357367.png">
+<meta property="og:image" content="http://example.com/2023/04/07/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9AClonos/image-20230407142153958.png">
+<meta property="og:image" content="http://example.com/2023/04/07/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9AClonos/image-20230407144441613.png">
+<meta property="og:image" content="http://example.com/2023/04/07/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9AClonos/image-20230407155233053.png">
+<meta property="og:image" content="http://example.com/2023/04/07/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9AClonos/image-20230407155316827.png">
+<meta property="og:image" content="http://example.com/2023/04/07/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9AClonos/image-20230407155423171-16808540638561.png">
+<meta property="og:image" content="http://example.com/2023/04/07/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9AClonos/image-20230407155531292.png">
+<meta property="article:published_time" content="2023-04-07T07:08:00.000Z">
+<meta property="article:modified_time" content="2023-11-18T08:37:17.091Z">
+<meta property="article:author" content="lxisnotlcn">
+<meta property="article:tag" content="stream computing">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2023/04/07/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9AClonos/image-20230405154828265.png">
+
+<link rel="canonical" href="http://example.com/2023/04/07/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9AClonos/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>论文笔记：Clonos | lxisnotlcn's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+      <a target="_blank" rel="noopener" href="https://github.com/lxisnotlcn" class="github-corner" aria-label="View source on GitHub"><svg width="80" height="80" viewBox="0 0 250 250" style="fill:#151513; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a><style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}</style>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">lxisnotlcn's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/04/07/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9AClonos/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/jojo.png">
+      <meta itemprop="name" content="lxisnotlcn">
+      <meta itemprop="description" content="我必将从这片石之海中重获自由">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="lxisnotlcn's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          论文笔记：Clonos
+        </h1>
+
+        <div class="post-meta">
+
+          
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-04-07 15:08:00" itemprop="dateCreated datePublished" datetime="2023-04-07T15:08:00+08:00">2023-04-07</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-11-18 16:37:17" itemprop="dateModified" datetime="2023-11-18T16:37:17+08:00">2023-11-18</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0/" itemprop="url" rel="index"><span itemprop="name">论文笔记</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="Clonos-Consistent-Causal-Recovery-for-Highly-Available-Streaming-Dataflows"><a href="#Clonos-Consistent-Causal-Recovery-for-Highly-Available-Streaming-Dataflows" class="headerlink" title="Clonos: Consistent Causal Recovery for Highly-Available Streaming Dataflows"></a>Clonos: Consistent Causal Recovery for Highly-Available Streaming Dataflows</h1><p><strong>摘要</strong> Clonos通过立即切到备用算子来实现快速的本地算子恢复，精确一次且高可用性，并且不需要算子确定性假设</p>
+<span id="more"></span>
+
+<h2 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h2><p>Clonos与相关工作相比，支持不确定性计算，两个贡献：</p>
+<ol>
+<li>描述了一种协议和相关的系统组件，以在不需要重新启动完整的流式拓扑的情况下执行本地恢复，旨在实现高可用性和低延迟，并保证精确一次处理</li>
+<li>我们以对应用程序程序员透明的方式处理实际流处理工作负载的固有不确定性</li>
+</ol>
+<p>本文贡献：</p>
+<ul>
+<li>一种新的容错方法，它结合了检查点、备用算子和因果日志记录，以：<ul>
+<li>在生产级系统上提供精确一次一致的本地恢复和高可用性，以及</li>
+<li>支持不确定性计算和系统功能</li>
+</ul>
+</li>
+<li>流处理中的不确定性分析以及Clonos如何保证一次处理</li>
+<li>在现实部署中进行的彻底的经验实验</li>
+</ul>
+<p>组织结构：</p>
+<ul>
+<li>第2节概述了我们的容错方法</li>
+<li>第3节概述了本文中使用的流处理模型，并包括关于回滚恢复、因果日志记录和Apache Flink的执行模型的初步内容</li>
+<li>第4节分析了流处理中的不确定性，以及如何使用Clonos来解决它</li>
+<li>第5节则展示了Clonos如何保证精确一次处理</li>
+<li>第6节报告了使Clonos实用所必需的重要设计决策</li>
+<li>第7节介绍了一系列广泛的实验</li>
+</ul>
+<h2 id="方法概述"><a href="#方法概述" class="headerlink" title="方法概述"></a>方法概述</h2><p>Clonos的主要目标是将失败的影响降至最低：只有失败的任务需要从失败中恢复，他们的上游和下游任务采取的行动最少，以帮助失败的任务恢复</p>
+<p>精确一次处理保证很有挑战性：使用最新检查点，重放检查点之后的记录来恢复</p>
+<p>重复数据消除也很有挑战：由于某些记录已经由失败的任务生成，因此恢复协议需要确保这些消息只处理一次。对于不确定性计算来说，这个问题变得更加困难</p>
+<p>如果需要高可用性，更加困难</p>
+<p>除了局部恢复外，Clonos还具有高可用性模式，在该模式下，它使用具有预加载状态的备用任务来加快恢复并进一步降低故障的影响</p>
+<h3 id="2-1-普通算子"><a href="#2-1-普通算子" class="headerlink" title="2.1 普通算子"></a>2.1 普通算子</h3><p>图1描述了一个简单的工作，包含四个任务及其相应的备用任务。每个任务执行一组算子。</p>
+<p><img src="/2023/04/07/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9AClonos/image-20230405154828265.png" alt="image-20230405154828265"></p>
+<p><strong>飞行记录</strong> 算子自上次成功检查点以来生成的记录，他们的影响尚未被记录到下游算子的状态，将输出发送到下游的算子task（#1、#2和#3）在内存中维护一个飞行记录的日志，直到下次检查点完成，这种做法是上游备份策略的基础</p>
+<p>图1捕获了作业处理黄色epoch记录时的执行快照。当一条记录到达任务#2时，它被处理，输出记录（为了简单起见，假设处理函数处理一条记录输出一条记录）被放入输出队列，一旦输出记录通过网络传输，它就会被添加到飞行日志中，飞行中的日志被分割为epoch，这样每当检查点完成时，可以删除检查点之前epoch中的所有记录</p>
+<p><strong>非确定性事件日志</strong> 任务维护决定因素的日志，用于记录有关不确定性事件和操作的信息。此外，如我们在第4.3节中所述，每个任务都会与下游任务增量地共享其日志。我们在第4节中介绍了不同类型的不确定性事件和操作。</p>
+<p><strong>备份任务（task）和状态快照</strong> 在高可用性模式下，Clonos部署的备用任务反映操作员状态，但由于不参与数据处理而保持空闲。每个备用任务在每个检查点之后接收其相应运行任务的状态快照。</p>
+<h3 id="2-2-恢复协议"><a href="#2-2-恢复协议" class="headerlink" title="2.2 恢复协议"></a>2.2 恢复协议</h3><p>让我们假设，就在图1所示的执行快照之后，一个故障会导致任务#2死亡。图2突出显示了我们的恢复协议的步骤。</p>
+<p><img src="/2023/04/07/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9AClonos/image-20230405161357367.png" alt="image-20230405161357367"></p>
+<ol>
+<li><strong>激活 新的&#x2F;备份 task</strong> job manager启动故障恢复过程，从而启动取代task。在高可用性模式下，拓扑维护已经包含最新检查点状态的影子&#x2F;备用任务，并保持空闲，直到作业管理器指示它们运行为止</li>
+<li><strong>重配置网络连接</strong> 备用任务动态地与拓扑中的前一个任务的上游和下游任务连接</li>
+<li><strong>检索决定因素日志</strong> 恢复任务从其下游任务中检索其前置任务的决定因素日志</li>
+<li><strong>请求飞行记录</strong> 与步骤3并行，备用任务向其上游任务发送一个飞行日志请求，该请求指定要重放的epoch</li>
+<li><strong>重放飞行记录</strong> 每个上游任务都会为请求的历元和信道重放其飞行记录。在这种情况下，任务#1将按顺序重放黄色和绿色时期的记录。恢复任务（任务#2）开始处理这些记录。每当它到达一个不确定的操作时，任务就会从决定因素日志中读取该操作的预期结果。</li>
+<li><strong>消除重复输出</strong> 与步骤5并行，恢复任务使用其决定因素日志来忽略其前一个任务在失败前产生的输出。这些输出记录被用来重建飞行日志状态。</li>
+</ol>
+<p>Clonos的恢复协议在许多方面与上游备份不同（上游任务回放输出记录，为了下游任务则恢复）。具体而言，我们的协议：</p>
+<ul>
+<li>使用检查点来减少重放的持续时间</li>
+<li>使用决定因素在失败后消除发送方的重复记录，并捕获我们在论文中描述的许多不确定性来源，以及</li>
+<li>针对当今分布式流媒体系统的架构和功能进行了优化，其中包括混洗、异步数据传输、检查点、处理时间语义、无序处理以及与外部服务的通信。</li>
+</ul>
+<h3 id="2-3-适用性与系统要求"><a href="#2-3-适用性与系统要求" class="headerlink" title="2.3 适用性与系统要求"></a>2.3 适用性与系统要求</h3><p>两个假设</p>
+<ul>
+<li>task之间存在可靠的FIFO通道</li>
+<li>检查点机制，它以规则的间隔创建系统全局状态的快照</li>
+</ul>
+<h2 id="预备工作"><a href="#预备工作" class="headerlink" title="预备工作"></a>预备工作</h2><p>本节提供了论文中使用的吞吐量概念的必要背景。我们重点关注流处理的当前恢复机制，以及这些机制与回滚恢复方案和因果日志记录的关系。</p>
+<h3 id="3-1-流模型"><a href="#3-1-流模型" class="headerlink" title="3.1 流模型"></a>3.1 流模型</h3><h3 id="3-2-基于检查点的回滚恢复"><a href="#3-2-基于检查点的回滚恢复" class="headerlink" title="3.2 基于检查点的回滚恢复"></a>3.2 基于检查点的回滚恢复</h3><p>现代横向扩展流媒体系统（如Apache Flink、IBM Streams、Trill和Jet）中的主要容错机制正在向系统全局状态的周期性Chandy Lamport式检查点趋同，系统将所有操作员的状态回滚到最新的检查点，并从特定的输入偏移恢复数据处理，可能会回放故障期间丢失的部分计算。这种停止和重新启动策略可以实现精确一次处理保证，但是需要重新启动</p>
+<p>这可以通过本地回滚恢复方案来解决，除了检查点之外，该方案还存储飞行中的记录：自上次检查点以来生成的所有记录的副本。如果任务失败，系统可以回滚到其最后一个检查点，并回放来自上游任务的传入记录</p>
+<p>但需要两个假设：</p>
+<ul>
+<li>算子是确定性的</li>
+<li>每个记录可以通过逻辑时间戳唯一识别。在重播期间，故障下游的任务可以使用这些时间戳应用重复数据消除</li>
+</ul>
+<p>Clonos使用因果日志记录来解除这些长期存在的限制</p>
+<h3 id="3-3-基于日志的回滚恢复"><a href="#3-3-基于日志的回滚恢复" class="headerlink" title="3.3 基于日志的回滚恢复"></a>3.3 基于日志的回滚恢复</h3><p>基于日志的方法依赖于分段确定性假设，该假设指出所有不确定性事件都可以被识别，并且系统可以记录其决定因素，要重放不确定性事件e必须存储时间及其决定因素，用e#表示</p>
+<p>仅仅拥有决定因素是不足以重演不确定性事件的。要重放记录接收事件，还需要重放记录内容，两种方式：</p>
+<ul>
+<li>接收方可以将记录内容与决定因素一起记录</li>
+<li>发送方可以在所谓的飞行记录日志中保存尚未稳定的已发送消息的日志</li>
+</ul>
+<p>第二种情况更为常见，因为第一种情况需要在稳定的存储中记录大量消息。相反，飞行中的记录日志可以保存在易失性内存中，因为在失败后，可以使用输入流和决定因素来确定地重建它</p>
+<h3 id="3-4-因果日志"><a href="#3-4-因果日志" class="headerlink" title="3.4 因果日志"></a>3.4 因果日志</h3><p>因果日志记录是一种基于日志的回滚恢复方法，特别适合流处理</p>
+<p>与悲观日志不同，因果日志在内存中维护决定性日志，与乐观日志不同，它确保始终没有孤儿属性，允许局部恢复，孤立进程被定义为其状态取决于不确定性事件e的进程，该事件在恢复过程中无法再现，如果无法再现不确定的事件，则必须将孤立进程的状态回滚到该事件之前，以确保一致性</p>
+<p><img src="/2023/04/07/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9AClonos/image-20230407142153958.png" alt="image-20230407142153958"></p>
+<ul>
+<li>Depend(e)：根据先发生后发生的关系，其状态受到e影响的进程集</li>
+<li>Log(e)：将e的决定因素记录在内存中的进程集</li>
+<li>Stable(e)：一个谓词，当e的效应存储在稳定存储器（即检查点）中时，该谓词变为true</li>
+<li>□：始终运行的算子</li>
+</ul>
+<p>因果日志确保：</p>
+<p>要么1）所有依赖于e的线程都已经被记录了他的决定因素</p>
+<p>要么2）e is stable. 如果一组进程F失败，那么对于所有not stable事件e，要么Depend(e) ⊆ Log(e) ⊆ F，这种情况下不存在孤儿进程，要么Depend(e) ⊆ Log(e) $\neg\subseteq$ F，在这种情况下，至少有一个幸存的进程具有e的决定因素，并且可以与正在恢复的进程共享它</p>
+<p>因果记录可以通过以下方式进行优化，即通过加强始终无孤立属性，确保不会将不必要的决定因素发送到不依赖它们的流程。</p>
+<p><img src="/2023/04/07/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9AClonos/image-20230407144441613.png" alt="image-20230407144441613"></p>
+<p>此属性表示，虽然e不稳定，但所有依赖于e的进程都必须记录它，并且最终记录它的进程将不会超过依赖它的进程。</p>
+<p>.。。。。。。</p>
+<h2 id="处理不确定性"><a href="#处理不确定性" class="headerlink" title="处理不确定性"></a>处理不确定性</h2><p>非确定性算子难以去重，无法区分数据，Clonos是第一个在缺乏确定性的情况下提供一次处理保证的本地恢复方案，它通过跟踪所有不确定性的来源，并利用因果日志记录。</p>
+<p><strong>流处理的因果日志</strong> 流处理是多线程的，不同的线程会影响状态，并在影响处理的任意系统时间生成记录，此外，流处理系统提供依赖于系统或处理时间的操作，例如处理时间窗口。需要控制所有这些不确定性计算和功能，以便在流系统中提供可回放的作业执行</p>
+<h3 id="4-1-不确定性来源"><a href="#4-1-不确定性来源" class="headerlink" title="4.1 不确定性来源"></a>4.1 不确定性来源</h3><p><strong>窗口&amp;时间敏感计算</strong> 事件时间、处理时间、摄取时间中，处理时间和摄取时间是不确定的</p>
+<p><strong>事件时间窗口&amp;无序处理</strong> 虽然事件时间是确定性的，但记录通常无序到达，需要低水位，而低水位是根据挂钟时间生成的，使用计时器，因此它们是非确定性的</p>
+<p><strong>计时器</strong> 计时器是programmatic hooks，计时器的触发由计时器线程控制，并且两个线程之间的操作交织是不确定的</p>
+<p><strong>用户定义函数&amp;外部调用</strong> 用户定义的函数不是沙盒函数：它们可以调用外部服务，访问外部键值存储，还可以进行其他异步调用。与外界的每一次互动都不是确定性的</p>
+<p><strong>随机数</strong> 不解释</p>
+<p><strong>Keyed Streams&amp;记录到达顺序？？</strong> 键控流恢复时，记录到达下游算子的顺序并不总是相同的，处理多个输入的算子是不确定的</p>
+<p><strong>检查点&amp;收到RPC</strong> 基于检查点的容错协议将检查点屏障注入数据流图，指示操作员在通过它们时检查它们的状态。根据作业管理器的系统时间（例如，每10秒），通过RPC将这些障碍注入数据流图中。任务接收到的任何影响其状态的RPC都是不确定的。</p>
+<p><strong>输出buffer</strong> 记录在被发送到下游之前被分组到缓冲区中。当缓冲区已满或下游任务需要缓冲区时，会发送缓冲区，后一种情况下，缓冲区可能不完整。因此，是否拆分缓冲区的决定是非常依赖时间的，不确定的</p>
+<h3 id="4-2-利用服务抽象非确定性"><a href="#4-2-利用服务抽象非确定性" class="headerlink" title="4.2 利用服务抽象非确定性"></a>4.2 利用服务抽象非确定性</h3><p>用户可以通过causal services来抽象复杂性，例如：</p>
+<p><img src="/2023/04/07/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9AClonos/image-20230407155233053.png" alt="image-20230407155233053"></p>
+<p>假设在图3中，一个用户定义的函数调用时间戳服务，该服务返回时间戳。在正常操作下，服务会生成一个不确定的时间戳，并将其附加到因果日志中，在恢复期间，当用户定义的函数从时间戳服务请求时间戳时</p>
+<p><img src="/2023/04/07/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9AClonos/image-20230407155316827.png" alt="image-20230407155316827"></p>
+<p>该服务将返回从因果日志读取的时间戳</p>
+<p>用户可以通过提供如清单2所示的匿名函数，在Clonos中注册自己的不确定性计算</p>
+<p><img src="/2023/04/07/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9AClonos/image-20230407155423171-16808540638561.png" alt="image-20230407155423171"></p>
+<p>在幕后，Clonos应用了匿名函数，如清单3所示。我们在下面描述内置因果服务</p>
+<p><img src="/2023/04/07/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9AClonos/image-20230407155531292.png" alt="image-20230407155531292"></p>
+<p><strong>记录处理顺序</strong> Order服务是一个内部服务（不向用户公开），它记录处理输入记录的顺序。在缓冲区级别上完成的</p>
+<p><strong>计时器&amp;收到RPC</strong> 定时器与主线程异步，恢复更复杂，首先为每个定时器回调函数引入唯一的ID。然后，我们修改定时器内部，在因果日志中注册一个“TimerFired”决定因素，其中包含它的ID和它触发的流偏移量，在恢复过程中，如果遇到“TimerFired”决定因素，我们将等待达到相同的流偏移量。然后，我们使用计时器ID来获取并执行相应的回调</p>
+<p><strong>挂钟时间</strong> 记录时间戳，恢复时读取时间戳，存储的是时间差值</p>
+<p><strong>调用外部系统</strong> 对外部系统的调用必须通过因果服务（例如HTTP服务）完成，因果服务将响应永久记录在日志中。然后可以在恢复期间从日志中反序列化响应。</p>
+<p><strong>随机数</strong> 记录随机种子</p>
+<h3 id="4-3-因果日志"><a href="#4-3-因果日志" class="headerlink" title="4.3 因果日志"></a>4.3 因果日志</h3><p>因果日志存储每个不确定性事件的决定因素，分为两部分</p>
+<ul>
+<li>task主线程的因果日志</li>
+<li>该算子的每个输出管道都有一个单独的因果日志</li>
+</ul>
+<p>在具有单个执行线程的典型消息传递系统中，因果日志只需要维护由该单个执行线程生成的一个日志。然而，在典型的横向扩展流系统中，为了提高性能，主处理线程与网络线程是分开的，并且它们通过共享数据结构进行通信。当主线程写入输出缓冲区时，输出队列可能会决定向下游发送未满（大小不确定）的缓冲区。因此，每个队列都有一个因果日志，其中记录发送的缓冲区的大小（图3）。此日志在恢复期间用于重复数据消除</p>
+<p><strong>所有buffer都携带决定因素</strong> 。。。。。。</p>
+<p><strong>将决定因素复制到下游Task</strong> 下游任务在接收到缓冲区和两个日志的增量后，将这些更新附加到相应的任务因果日志中。通过这种方式，在允许数据影响状态之前，已经存储了恢复数据所需的因果信息。为了能够承受两个连续任务的失败，人们可能还想将每个任务的决定因素复制到更深的共享深度</p>
+<p><strong>截断因果日志</strong> 因果日志根据epoch按段组织，并在检查点完成时截断；因果日志只需要在一个epoch的中间，当本地恢复必须使用正在运行的日志和旧的检查点完成时，正如我们在下一节中所描述的那样。</p>
+<h2 id="精确一次恢复"><a href="#精确一次恢复" class="headerlink" title="精确一次恢复"></a>精确一次恢复</h2><p>描述Clonos如何保证精确一次</p>
+<h3 id="5-1-基于Lineage重放"><a href="#5-1-基于Lineage重放" class="headerlink" title="5.1 基于Lineage重放"></a>5.1 基于Lineage重放</h3><p>替换失败task时，需要从上游重放飞行日志，如果上游没有（通常是因为它刚刚从故障中恢复），递归向上请求，一直到达源</p>
+<h3 id="5-2-基于决定因素的重复数据消除"><a href="#5-2-基于决定因素的重复数据消除" class="headerlink" title="5.2 基于决定因素的重复数据消除"></a>5.2 基于决定因素的重复数据消除</h3><p>Clonos中的重复数据消除是通过两个并行步骤完成的。首先，当主处理线程恢复时，它使用其因果日志来产生完全相同的输出记录。同时，网络通道线程使用它们的因果日志来重建与之前发送的缓冲区相同的缓冲区，其中因果日志仅包含关于下游接收的缓冲区大小的信息</p>
+<h3 id="5-3-恢复机制的正确性"><a href="#5-3-恢复机制的正确性" class="headerlink" title="5.3 恢复机制的正确性"></a>5.3 恢复机制的正确性</h3>
+    </div>
+
+    
+    
+    
+
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/stream-computing/" rel="tag"># stream computing</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/2023/07/01/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9ADalton/" rel="next" title="论文笔记：Dalton">
+      论文笔记：Dalton <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    
+  <div class="comments">
+    <div id="lv-container" data-id="city" data-uid="MTAyMC81OTIwNS8zNTY2Nw=="></div>
+  </div>
+  
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Clonos-Consistent-Causal-Recovery-for-Highly-Available-Streaming-Dataflows"><span class="nav-number">1.</span> <span class="nav-text">Clonos: Consistent Causal Recovery for Highly-Available Streaming Dataflows</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%8B%E7%BB%8D"><span class="nav-number">1.1.</span> <span class="nav-text">介绍</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%96%B9%E6%B3%95%E6%A6%82%E8%BF%B0"><span class="nav-number">1.2.</span> <span class="nav-text">方法概述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E6%99%AE%E9%80%9A%E7%AE%97%E5%AD%90"><span class="nav-number">1.2.1.</span> <span class="nav-text">2.1 普通算子</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E6%81%A2%E5%A4%8D%E5%8D%8F%E8%AE%AE"><span class="nav-number">1.2.2.</span> <span class="nav-text">2.2 恢复协议</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-%E9%80%82%E7%94%A8%E6%80%A7%E4%B8%8E%E7%B3%BB%E7%BB%9F%E8%A6%81%E6%B1%82"><span class="nav-number">1.2.3.</span> <span class="nav-text">2.3 适用性与系统要求</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%A2%84%E5%A4%87%E5%B7%A5%E4%BD%9C"><span class="nav-number">1.3.</span> <span class="nav-text">预备工作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E6%B5%81%E6%A8%A1%E5%9E%8B"><span class="nav-number">1.3.1.</span> <span class="nav-text">3.1 流模型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E5%9F%BA%E4%BA%8E%E6%A3%80%E6%9F%A5%E7%82%B9%E7%9A%84%E5%9B%9E%E6%BB%9A%E6%81%A2%E5%A4%8D"><span class="nav-number">1.3.2.</span> <span class="nav-text">3.2 基于检查点的回滚恢复</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-%E5%9F%BA%E4%BA%8E%E6%97%A5%E5%BF%97%E7%9A%84%E5%9B%9E%E6%BB%9A%E6%81%A2%E5%A4%8D"><span class="nav-number">1.3.3.</span> <span class="nav-text">3.3 基于日志的回滚恢复</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-4-%E5%9B%A0%E6%9E%9C%E6%97%A5%E5%BF%97"><span class="nav-number">1.3.4.</span> <span class="nav-text">3.4 因果日志</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A4%84%E7%90%86%E4%B8%8D%E7%A1%AE%E5%AE%9A%E6%80%A7"><span class="nav-number">1.4.</span> <span class="nav-text">处理不确定性</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E4%B8%8D%E7%A1%AE%E5%AE%9A%E6%80%A7%E6%9D%A5%E6%BA%90"><span class="nav-number">1.4.1.</span> <span class="nav-text">4.1 不确定性来源</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E5%88%A9%E7%94%A8%E6%9C%8D%E5%8A%A1%E6%8A%BD%E8%B1%A1%E9%9D%9E%E7%A1%AE%E5%AE%9A%E6%80%A7"><span class="nav-number">1.4.2.</span> <span class="nav-text">4.2 利用服务抽象非确定性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E5%9B%A0%E6%9E%9C%E6%97%A5%E5%BF%97"><span class="nav-number">1.4.3.</span> <span class="nav-text">4.3 因果日志</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%B2%BE%E7%A1%AE%E4%B8%80%E6%AC%A1%E6%81%A2%E5%A4%8D"><span class="nav-number">1.5.</span> <span class="nav-text">精确一次恢复</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-%E5%9F%BA%E4%BA%8ELineage%E9%87%8D%E6%94%BE"><span class="nav-number">1.5.1.</span> <span class="nav-text">5.1 基于Lineage重放</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-%E5%9F%BA%E4%BA%8E%E5%86%B3%E5%AE%9A%E5%9B%A0%E7%B4%A0%E7%9A%84%E9%87%8D%E5%A4%8D%E6%95%B0%E6%8D%AE%E6%B6%88%E9%99%A4"><span class="nav-number">1.5.2.</span> <span class="nav-text">5.2 基于决定因素的重复数据消除</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-%E6%81%A2%E5%A4%8D%E6%9C%BA%E5%88%B6%E7%9A%84%E6%AD%A3%E7%A1%AE%E6%80%A7"><span class="nav-number">1.5.3.</span> <span class="nav-text">5.3 恢复机制的正确性</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="lxisnotlcn"
+      src="/images/jojo.png">
+  <p class="site-author-name" itemprop="name">lxisnotlcn</p>
+  <div class="site-description" itemprop="description">我必将从这片石之海中重获自由</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">7</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/lxisnotlcn" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;lxisnotlcn" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:lxisnotlcn@gmail.com" title="E-Mail → mailto:lxisnotlcn@gmail.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2023-11 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">lxisnotlcn</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+<div class="theme-info">
+  <div class="powered-by"></div>
+  <span class="post-count">博客全站共11.6k字</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<script>
+NexT.utils.loadComments(document.querySelector('#lv-container'), () => {
+  window.livereOptions = {
+    refer: location.pathname.replace(CONFIG.root, '').replace('index.html', '')
+  };
+  (function(d, s) {
+    var j, e = d.getElementsByTagName(s)[0];
+    if (typeof LivereTower === 'function') { return; }
+    j = d.createElement(s);
+    j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+    j.async = true;
+    e.parentNode.insertBefore(j, e);
+  })(document, 'script');
+});
+</script>
+
+</body>
+</html>
