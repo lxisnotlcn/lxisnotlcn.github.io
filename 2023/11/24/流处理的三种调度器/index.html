@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.0.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/ice-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/ice-16x16.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="Task Scheduling in Data Stream Processing Systems讲了三种调度器，启发式方法，清晰易懂很有用！ 摘要 最佳调度问题是NP难的，所以需要近似调度方法，本论文提出三个调度器，每个调度器都采用了不同的启发式分区方法，性能提升">
+<meta property="og:type" content="article">
+<meta property="og:title" content="流处理的三种调度器">
+<meta property="og:url" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/index.html">
+<meta property="og:site_name" content="lxisnotlcn&#39;s blog">
+<meta property="og:description" content="Task Scheduling in Data Stream Processing Systems讲了三种调度器，启发式方法，清晰易懂很有用！ 摘要 最佳调度问题是NP难的，所以需要近似调度方法，本论文提出三个调度器，每个调度器都采用了不同的启发式分区方法，性能提升">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231122203617770.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231122210253516.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231122210525037.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231122211217074.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231122211428001.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231122211745746.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231122213707045.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231122215130339.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231122215143820.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123130548927.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123131356158.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123134214269.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123134424629.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123135828013.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123135947314.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123140029606.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123141448297.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123141616376.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123141741902.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123142432614.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123143838417.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123150034787.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123152134847.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123152219396.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123154704895.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123154847408.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123155222833.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123155310411.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123165030263.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123195625883.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123195552159.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123195927708.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123200406705.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123200506746.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123201338860.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123201531899.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123203118087.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123203452662.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123214313104.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123214244529.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123214338457.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123221508453.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123223308756.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123223340888.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123224103332.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123224615993.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231124140956071.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231124141032360.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231124151124447.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231124141135367.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231124153053412.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231124154029377.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231124154104156.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231124154311535.png">
+<meta property="og:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231124155643265.png">
+<meta property="article:published_time" content="2023-11-24T08:07:58.000Z">
+<meta property="article:modified_time" content="2023-11-24T08:10:44.172Z">
+<meta property="article:author" content="lxisnotlcn">
+<meta property="article:tag" content="stream computing">
+<meta property="article:tag" content="schedule">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231122203617770.png">
+
+<link rel="canonical" href="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>流处理的三种调度器 | lxisnotlcn's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+      <a target="_blank" rel="noopener" href="https://github.com/lxisnotlcn" class="github-corner" aria-label="View source on GitHub"><svg width="80" height="80" viewBox="0 0 250 250" style="fill:#151513; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a><style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}</style>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">lxisnotlcn's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/jojo.png">
+      <meta itemprop="name" content="lxisnotlcn">
+      <meta itemprop="description" content="我必将从这片石之海中重获自由">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="lxisnotlcn's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          流处理的三种调度器
+        </h1>
+
+        <div class="post-meta">
+
+          
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2023-11-24 16:07:58 / 修改时间：16:10:44" itemprop="dateCreated datePublished" datetime="2023-11-24T16:07:58+08:00">2023-11-24</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0/" itemprop="url" rel="index"><span itemprop="name">论文笔记</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="Task-Scheduling-in-Data-Stream-Processing-Systems"><a href="#Task-Scheduling-in-Data-Stream-Processing-Systems" class="headerlink" title="Task Scheduling in Data Stream Processing Systems"></a>Task Scheduling in Data Stream Processing Systems</h1><p>讲了三种调度器，启发式方法，清晰易懂很有用！</p>
+<p><strong>摘要</strong> 最佳调度问题是NP难的，所以需要近似调度方法，本论文提出三个调度器，每个调度器都采用了不同的启发式分区方法，性能提升</p>
+<span id="more"></span>
+
+<h2 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h2><h3 id="1-1-流处理系统"><a href="#1-1-流处理系统" class="headerlink" title="1.1 流处理系统"></a>1.1 流处理系统</h3><p>数据流特征：</p>
+<ul>
+<li>流中的数据项不断到达，并以它们到达的顺序进行处理，而无需存储</li>
+<li>输入速率不可控，可能突发或不规则</li>
+<li>数据流大小是无限的</li>
+<li>数据可能缺失或损坏</li>
+<li>类型多样性</li>
+</ul>
+<h3 id="1-2-流处理的挑战"><a href="#1-2-流处理的挑战" class="headerlink" title="1.2 流处理的挑战"></a>1.2 流处理的挑战</h3><p>设计DSPS（Data Stream Processing Systems）的挑战包括：</p>
+<ul>
+<li>调度——为了提高系统性能，分布式流处理系统需要有效的调度分布式节点之间的任务</li>
+<li>重新调度——重新调度对DSPS增加了一些负载，需要对新调度的gain和引发的负载之间做balance</li>
+<li>并行度——并行度小会产生瓶颈，并行度大会浪费资源</li>
+<li>可扩展性——DSPS应该能够通过scale in or out来响应负载的变化</li>
+<li>容错——在不明显中断的情况下有效地从故障中恢复</li>
+<li>可靠性——DSPS需要在故障情况下重放数据流</li>
+<li>状态管理——重新调度时需要保留迁移的状态，避免损失</li>
+<li>QoS规范——某些应用要求如吞吐量、时延、内存等</li>
+<li>数据安全——处理敏感信息时，需要对数据机密性、完整性、可用性等做出保证</li>
+</ul>
+<p>不可能同时优化所有挑战，只能权衡，本文专注于调度</p>
+<p>将高度通信的任务放到同一个计算节点可以减少节点间的通信，但现有的这种模式的调度器有很多限制：</p>
+<ol>
+<li>计算节点可能被低估导致使用比所需更多的计算节点？？？</li>
+<li>集群异构性没有考虑</li>
+<li>离线调度器无法使用流处理系统的变化</li>
+</ol>
+<h3 id="1-3-贡献"><a href="#1-3-贡献" class="headerlink" title="1.3 贡献"></a>1.3 贡献</h3><p>三种调度器：</p>
+<ul>
+<li>P-Scheduler：先找所需的同构节点的数量，然后基于这个数量，使用K-way partitioning，最小化节点间通信，再最小化worker间通信</li>
+<li>T3-Scheduler：每个分组都有一个与异构节点能力相关的大小，在相对于节点容量调整每个分区时考虑应用程序图中任务的形状和连通性</li>
+<li>I-Scheduler：通过融合高通信task来减少分组，允许数学优化软件</li>
+</ul>
+<h3 id="1-4-出版"><a href="#1-4-出版" class="headerlink" title="1.4 出版"></a>1.4 出版</h3><p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231122203617770.png" alt="image-20231122203617770"></p>
+<p>一篇顶四篇</p>
+<h3 id="1-5-论文架构"><a href="#1-5-论文架构" class="headerlink" title="1.5 论文架构"></a>1.5 论文架构</h3><ul>
+<li>第二章：背景，流处理批处理</li>
+<li>第三章：调度的最新技术</li>
+<li>第四章：系统模型与公式</li>
+<li>第五章：Storm系统</li>
+<li>第六章：实验的设置</li>
+<li>第七章：P-Scheduler（同构集群）</li>
+<li>第八章：T3-Scheduler（异构集群）</li>
+<li>第九章：I-Scheduler（异构集群）</li>
+<li>第十章：结论</li>
+</ul>
+<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><h3 id="2-1-大数据描述"><a href="#2-1-大数据描述" class="headerlink" title="2.1 大数据描述"></a>2.1 大数据描述</h3><p>4V：</p>
+<ul>
+<li>Volume（数据量大）</li>
+<li>Velocity（速度快）</li>
+<li>Variety（多样性）</li>
+<li>Veracity（真实性）：由于数据可能来自许多不同的来源，因此确保数据准确且值得信赖是很重要的</li>
+</ul>
+<h3 id="2-2-大数据分析技术"><a href="#2-2-大数据分析技术" class="headerlink" title="2.2 大数据分析技术"></a>2.2 大数据分析技术</h3><ul>
+<li>批分析</li>
+<li>实时分析或流处理</li>
+<li>Ad hoc analysis or NoSQL：结构化、半结构化和非结构化数据的集合，可以提供业务记录、文档和图形等的结果</li>
+<li>图分析：可用于分析实体之间的关系</li>
+<li>迭代分析：允许在大型数据集上重复执行操作以提取值或查找数据中的模式</li>
+</ul>
+<h3 id="2-3-大数据处理框架的出现"><a href="#2-3-大数据处理框架的出现" class="headerlink" title="2.3 大数据处理框架的出现"></a>2.3 大数据处理框架的出现</h3><ul>
+<li>Relational Database Management Systems (RDBMS) and NewSQL：不适合存储半结构化或非结构化数据</li>
+<li>High performance computing and grid computing：限制了系统的可扩展性</li>
+<li>Volunteer computing：不适合大数据处理</li>
+</ul>
+<h3 id="2-4-大数据处理框架"><a href="#2-4-大数据处理框架" class="headerlink" title="2.4 大数据处理框架"></a>2.4 大数据处理框架</h3><p>静态数据计算与动态数据计算区别：</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231122210253516.png" alt="image-20231122210253516"></p>
+<h4 id="2-4-1-批处理系统"><a href="#2-4-1-批处理系统" class="headerlink" title="2.4.1 批处理系统"></a>2.4.1 批处理系统</h4><ul>
+<li><p>hadoop：</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231122210525037.png" alt="image-20231122210525037"></p>
+</li>
+<li><p>spark：RDD</p>
+</li>
+</ul>
+<h4 id="2-4-2-流处理系统"><a href="#2-4-2-流处理系统" class="headerlink" title="2.4.2 流处理系统"></a>2.4.2 流处理系统</h4><p><strong>第一代流处理系统</strong>：单机、特定应用、以数据库为中心</p>
+<ul>
+<li>Tribeca</li>
+<li>Aurora</li>
+<li>TelegraphCQ</li>
+<li>STREAM</li>
+</ul>
+<p><strong>第二代流处理系统</strong>：鲁棒性和容错方面有所提高</p>
+<ul>
+<li>Aurora* and Medusa</li>
+<li>Borealis</li>
+<li>System S</li>
+<li>SPADE</li>
+</ul>
+<p><strong>第三代流处理系统（基于云）</strong>：在云计算环境中运行，稳健，可扩展性</p>
+<ul>
+<li>Apache Storm</li>
+<li>Apache S4</li>
+<li>Apache Samza</li>
+<li>Apache Apex</li>
+<li>Apache Flink</li>
+<li>Spark Streaming</li>
+</ul>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231122211217074.png" alt="image-20231122211217074"></p>
+<h4 id="2-4-3-lambda架构"><a href="#2-4-3-lambda架构" class="headerlink" title="2.4.3 lambda架构"></a>2.4.3 lambda架构</h4><p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231122211428001.png" alt="image-20231122211428001"></p>
+<h4 id="2-4-4-事件流处理vs复杂事件处理"><a href="#2-4-4-事件流处理vs复杂事件处理" class="headerlink" title="2.4.4 事件流处理vs复杂事件处理"></a>2.4.4 事件流处理vs复杂事件处理</h4><p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231122211745746.png" alt="image-20231122211745746"></p>
+<p>不同之处：</p>
+<ul>
+<li>可扩展性：ESP旨在数百个节点的并行分布式系统、CEP节点少</li>
+<li>查询：ESP允许用户使用编程语言查询，CEP通常SQL</li>
+<li>可靠性：ESP可靠处理，CEP可能丢失事件</li>
+</ul>
+<h3 id="2-5-总结"><a href="#2-5-总结" class="headerlink" title="2.5 总结"></a>2.5 总结</h3><p>在本章中，我们描述了大数据的特点和要求，以及需要多少新的处理系统来解决大数据挑战。我们还为批处理和三代流处理框架提供了背景</p>
+<h2 id="相关工作"><a href="#相关工作" class="headerlink" title="相关工作"></a>相关工作</h2><h3 id="3-1-批处理框架的任务调度"><a href="#3-1-批处理框架的任务调度" class="headerlink" title="3.1 批处理框架的任务调度"></a>3.1 批处理框架的任务调度</h3><p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231122213707045.png" alt="image-20231122213707045"></p>
+<h3 id="3-2-流处理框架的任务调度"><a href="#3-2-流处理框架的任务调度" class="headerlink" title="3.2 流处理框架的任务调度"></a>3.2 流处理框架的任务调度</h3><p>一个目标是提高通信感知（减少通信），另一个目标是提供QoS</p>
+<p><strong>数学规划</strong></p>
+<p>在这种方法中，调度问题被表述为一个优化问题，并使用数学编程技术解决</p>
+<p>学技术中的每一个都试图解决不同的优化目标。然而，由于问题是 NP-hard，其中许多技术依赖于启发式方法作为回退，因为无法在可行的时间内找到解决方案。这是这种方法的一个关键限制，其中寻找最优解的预期方法是不切实际的</p>
+<p><strong>基于图的近似</strong></p>
+<p>将流应用程序视为一个图，现有的图分析技术可以应用于调度问题。这些技术包括图划分和关键路径分析，主要旨在减少节点间通信</p>
+<p><strong>启发式方法</strong></p>
+<p>为了有效地工作，启发式方法做出了许多简化假设，这些假设可能导致次优解决方案。尽管如此，当最优解不是必需的时，它们很有用</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231122215130339.png" alt="image-20231122215130339"></p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231122215143820.png" alt="image-20231122215143820"></p>
+<h3 id="3-3-云与网格计算的工作流调度"><a href="#3-3-云与网格计算的工作流调度" class="headerlink" title="3.3 云与网格计算的工作流调度"></a>3.3 云与网格计算的工作流调度</h3><p>没看懂</p>
+<h3 id="3-4-讨论"><a href="#3-4-讨论" class="headerlink" title="3.4 讨论"></a>3.4 讨论</h3><p>描述了流处理系统的不同调度方法</p>
+<h3 id="3-5-总结"><a href="#3-5-总结" class="headerlink" title="3.5 总结"></a>3.5 总结</h3><p>在本章中，我们介绍了用于流处理系统的最先进的调度算法，它采用三种主要方法之一：数学、基于图的近似和启发式。我们进一步强调了每个调度器的主要优化目标，然后概述了这些方法的主要局限性。最后，我们概述了我们的优化目标是什么以及如何我们打算解决现有启发式方法中的一些限制。</p>
+<h2 id="系统模型与问题描述"><a href="#系统模型与问题描述" class="headerlink" title="系统模型与问题描述"></a>系统模型与问题描述</h2><h3 id="4-1-系统模型"><a href="#4-1-系统模型" class="headerlink" title="4.1 系统模型"></a>4.1 系统模型</h3><p>DAG，G&#x3D;(V, E)</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123130548927.png" alt="image-20231123130548927"></p>
+<p>并行度，task-view：</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123131356158.png" alt="image-20231123131356158"></p>
+<h3 id="4-2-问题描述"><a href="#4-2-问题描述" class="headerlink" title="4.2 问题描述"></a>4.2 问题描述</h3><p>节点和边分别有负载与传输速率的权重，定义调度问题为：将task-view中的节点映射到不同容量的节点集中，使得节点间的边权重最小化并且每个节点的task综合不超过节点容量</p>
+<p>但这个问题是NP难的</p>
+<p>形式化定义如下：</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123134214269.png" alt="image-20231123134214269"></p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123134424629.png" alt="image-20231123134424629"></p>
+<p>$y_{i,j}$ 代表是否是节点间通信（排除节点内通信）1代表节点间，0代表节点内</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123135828013.png" alt="image-20231123135828013"></p>
+<p>则通信代价为：</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123135947314.png" alt="image-20231123135947314"></p>
+<p>s.t. </p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123140029606.png" alt="image-20231123140029606"></p>
+<p>两个限制分别保证了task集不超过节点容量以及每个task都会被分配</p>
+<p>例子：</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123141448297.png" alt="image-20231123141448297"></p>
+<p>假设5个task，2个node，边的权重都是1，task的负载也都是1，node的容量为3，放置矩阵x可以表示为：</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123141616376.png" alt="image-20231123141616376"></p>
+<p>节点间通信矩阵y可以表示为：</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123141741902.png" alt="image-20231123141741902"></p>
+<p>以y[0][1]为例，代表 $t_1$ 和 $t_2$ 之间是否是节点间通信，如果是节点间通信只可能为 $t_1$ 在节点1上且 $t_2$ 在节点2上，或者 $t_1$ 在节点2上且 $t_2$ 在节点1上，所以是$x_{11} * x_{22} + x_{21} * x_{12}$</p>
+<p>由于数据传输速率都是1，所以通信代价Cost矩阵与y相同，这个问题可以与限制条件一起提供给优化软件，即未超过每个节点的 3 个任务的容量，并且任务仅分配给一个节点</p>
+<p>一个可能的最优解为：</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123142432614.png" alt="image-20231123142432614"></p>
+<h3 id="4-3-总结"><a href="#4-3-总结" class="headerlink" title="4.3 总结"></a>4.3 总结</h3><p>虽然能形式化定义调度问题，但已经被证明是NP难的，小规模问题可以求解，随着规模增长，找最优解变得不现实</p>
+<p>需要一种启发式方法找到近似最优调度，本文提出三种启发式调度</p>
+<h2 id="Apache-Storm"><a href="#Apache-Storm" class="headerlink" title="Apache Storm"></a>Apache Storm</h2><h3 id="5-1-Storm集群"><a href="#5-1-Storm集群" class="headerlink" title="5.1 Storm集群"></a>5.1 Storm集群</h3><p>由三种类型节点组成：</p>
+<ul>
+<li><strong>master节点</strong> 有一个叫做Nimbus的守护进程，负责调度task，将task分配到节点上并且监视task执行</li>
+<li><strong>worker节点</strong> 有一个叫做Supervisor的守护进程，负责启动或终止Nimbus分配的task，每个worker节点被配置了许多端口与slot，每个slot可以承担一个worker进程（worker process），每个worker进程都是一个独立的JVM，每个JVM可以运行许多task</li>
+<li><strong>Zookeeper节点</strong> 协调master节点与worker节点之间的通信，ZooKeeper节点的数量取决于集群的规模</li>
+</ul>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123143838417.png" alt="image-20231123143838417"></p>
+<h3 id="5-2-Storm应用及其组件"><a href="#5-2-Storm应用及其组件" class="headerlink" title="5.2 Storm应用及其组件"></a>5.2 Storm应用及其组件</h3><p>流应用叫做拓扑（topology），两种组件：spout、bolt</p>
+<p>spout代表数据源，bolt代表处理算子</p>
+<h3 id="5-3-流分组"><a href="#5-3-流分组" class="headerlink" title="5.3 流分组"></a>5.3 流分组</h3><p>常见流分组：</p>
+<ul>
+<li><strong>Shuffle grouping</strong>：随机、洗牌</li>
+<li><strong>Fields grouping</strong>：基于特定字段选择下游，使得该特定字段相同的元组会被转发到同样的task中</li>
+<li><strong>Global grouping</strong>：全部进入最低ID？？没看懂，原文：The entire stream goes to the task with the lowest ID in the component receiving a tuple.</li>
+<li><strong>Direct grouping</strong>：由组件决定</li>
+<li><strong>All grouping</strong>：广播</li>
+</ul>
+<p>例子，wordcount：</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123150034787.png" alt="image-20231123150034787"></p>
+<h3 id="5-4-Storm默认调度器"><a href="#5-4-Storm默认调度器" class="headerlink" title="5.4 Storm默认调度器"></a>5.4 Storm默认调度器</h3><p>EventScheduler，像发牌一样分配task到node上，首先按照组件的名称排序，将每个task按排序后的顺序赋予编号，如上图组件排序成{C1, C2, C3}，然后赋予task1-6的编号，然后以循环方式分配到每个node的slot中，首先选择每个node的slot1，在选择每个node的slot2……</p>
+<p>假设有4个node，假设每个task生成的平均CPU负载为α，4个node容量分别为6α，6α，3α，3α，node1和node2配置了两个slot，node3和node4配置了一个slot</p>
+<p>按Storm的默认调度器，调度后如下图：</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123152134847.png" alt="image-20231123152134847"></p>
+<p>node间通信：</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123152219396.png" alt="image-20231123152219396"></p>
+<p>默认调度器有以下缺点：</p>
+<ul>
+<li>没有考虑集群内的节点异构性（n1、n2应该分配更多）</li>
+<li>没有充分利用每个节点的容量（n1或n2足以跑任务）</li>
+<li>任务间的通信模式被忽略（通信开销）</li>
+<li>静态的，不随速率或负载变化而变化</li>
+</ul>
+<h3 id="5-5-总结"><a href="#5-5-总结" class="headerlink" title="5.5 总结"></a>5.5 总结</h3><p>介绍Storm背景</p>
+<h2 id="实验设置"><a href="#实验设置" class="headerlink" title="实验设置"></a>实验设置</h2><h3 id="6-1-实验装置"><a href="#6-1-实验装置" class="headerlink" title="6.1 实验装置"></a>6.1 实验装置</h3><p>Apache Storm 1.1.1</p>
+<p>one master node, one ZooKeeper node and eight worker nodes</p>
+<p>Ubuntu 16.04 LTS</p>
+<p>高容量节点配置为 4 个内核和 4GiB RAM，每个节点有四个槽，而低容量节点有 2 个内核和 2GiB RAM，每个节点有两个槽</p>
+<p>每个节点都有一个2.7GHz Intel Core i5-3330S处理器，连接到1Gbps网络</p>
+<p>为了防止任何节点变得过载，每个调度器都会分配任务，以便节点的平均 CPU 使用不超过 80%</p>
+<p>停止运行，调度（中断式的）</p>
+<h3 id="6-2-微基准"><a href="#6-2-微基准" class="headerlink" title="6.2 微基准"></a>6.2 微基准</h3><p>常见流应用布局：</p>
+<ul>
+<li>线性</li>
+<li>棱形</li>
+<li>星形</li>
+</ul>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123154704895.png" alt="image-20231123154704895"></p>
+<h4 id="6-2-1-将我们提出的调度器与理论上最优的调度器进行比较"><a href="#6-2-1-将我们提出的调度器与理论上最优的调度器进行比较" class="headerlink" title="6.2.1 将我们提出的调度器与理论上最优的调度器进行比较"></a>6.2.1 将我们提出的调度器与理论上最优的调度器进行比较</h4><p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123154847408.png" alt="image-20231123154847408"></p>
+<h4 id="6-2-2-I-O密集型和CPU密集型"><a href="#6-2-2-I-O密集型和CPU密集型" class="headerlink" title="6.2.2 I&#x2F;O密集型和CPU密集型"></a>6.2.2 I&#x2F;O密集型和CPU密集型</h4><p>分别测试</p>
+<h3 id="6-3-现实世界负载"><a href="#6-3-现实世界负载" class="headerlink" title="6.3 现实世界负载"></a>6.3 现实世界负载</h3><h4 id="6-3-1-智能家居负荷预测应用"><a href="#6-3-1-智能家居负荷预测应用" class="headerlink" title="6.3.1 智能家居负荷预测应用"></a>6.3.1 智能家居负荷预测应用</h4><p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123155222833.png" alt="image-20231123155222833"></p>
+<p>详细见原文</p>
+<h4 id="6-3-2-纽约市出租车数据最常见的路线应用"><a href="#6-3-2-纽约市出租车数据最常见的路线应用" class="headerlink" title="6.3.2 纽约市出租车数据最常见的路线应用"></a>6.3.2 纽约市出租车数据最常见的路线应用</h4><p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123155310411.png" alt="image-20231123155310411"></p>
+<p>详细见原文</p>
+<h3 id="6-4-总结"><a href="#6-4-总结" class="headerlink" title="6.4 总结"></a>6.4 总结</h3><p>描述了用于评估我们提出的调度器的设置</p>
+<h2 id="P-Scheduler"><a href="#P-Scheduler" class="headerlink" title="P-Scheduler"></a>P-Scheduler</h2><h3 id="7-1-介绍"><a href="#7-1-介绍" class="headerlink" title="7.1 介绍"></a>7.1 介绍</h3><p>两层调度</p>
+<p>第一层：计算所需的node数量</p>
+<p>第二层：将高度通信的task放到同一个node中</p>
+<p>贡献：</p>
+<ul>
+<li>首先计算数据流处理系统中运行流应用程序所需的节点数量来减少节点间流量</li>
+<li>提出了P-Scheduler，一种用于流应用的在线分层调度算法，先算节点数，将高度通信的任务分配给相同的工作或节点来最大化通信效率</li>
+<li>微基准测试，P-Scheduler 可以在同质集群配置中实现接近最优的结果</li>
+<li>实验，性能好</li>
+</ul>
+<p>要算节点数，怪不得同质集群</p>
+<h3 id="7-2-图分区"><a href="#7-2-图分区" class="headerlink" title="7.2 图分区"></a>7.2 图分区</h3><p>K-way multilevel partitioning 三阶段</p>
+<ul>
+<li>graph coarsening（粗糙化）</li>
+<li>initial partitioning into k parts（分区成k部分）</li>
+<li>uncoarsening（去粗糙化）</li>
+</ul>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123165030263.png" alt="image-20231123165030263"></p>
+<h3 id="7-3-P-Scheduler算法"><a href="#7-3-P-Scheduler算法" class="headerlink" title="7.3 P-Scheduler算法"></a>7.3 P-Scheduler算法</h3><p>在本节中，我们将描述 P-Scheduler 算法。目标是将流应用程序的高度通信任务分配给同一个worker进程或节点。为此，采用两级调度方法分配任务来计算节点。在第一级，决定应该将哪些任务分配给同一个计算节点（node）。调度器的第二级决定同一节点内的哪些任务应该在同一个worker进程中（slot）</p>
+<p>4个主要步骤：</p>
+<ol>
+<li><strong>监视：</strong> 为了调度，P-Scheduler需要对任务进行剖析，测量通信任务之间的任务负载和数据传输速率</li>
+<li><strong>构建加权图：</strong> 使用上一步的剖析结果来构建加权图。在重新调度时，该图使用新权重进行更新</li>
+<li><strong>第一级调度：</strong> P-Scheduler 确定运行任务所需的计算节点的数量n，然后将加权图从上一步划分为 n 个部分，高度通信的task位于同一node</li>
+<li><strong>第二级调度：</strong> P-Scheduler招待每个node所需的worker process数量w，将高度通信的task分到同一个worker中</li>
+</ol>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123195625883.png" alt="image-20231123195625883"></p>
+<p>正式描述如下：</p>
+<ul>
+<li><p><strong>第一级调度：</strong> G  &#x3D;（V，E），V是顶点集E是边集，找到V的n个first-level子集$V_1$，$V_2$，…，$V_n$使得</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123195552159.png" alt="image-20231123195552159"></p>
+</li>
+<li><p><strong>第二级调度：</strong> 对于每个first-level子集$V_i$，找到w个second-level子集$V_{i1}$，$V_{i2}$，…，$V_{iw}$，使得</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123195927708.png" alt="image-20231123195927708"></p>
+</li>
+</ul>
+<p>第一级确定每个task该放到哪个node中，第二级确定每个task该放到哪个worker线程中（slot）</p>
+<p>P-Scheduler伪代码：</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123200406705.png" alt="image-20231123200406705"></p>
+<p>Storm集群中实现：</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123200506746.png" alt="image-20231123200506746"></p>
+<h4 id="7-3-1-监视"><a href="#7-3-1-监视" class="headerlink" title="7.3.1 监视"></a>7.3.1 监视</h4><p>提交流应用时，先用Storm的循环调度运行一段时间，P-Scheduler 监控执行，包括task间的数据传输速率，task负载等，存储到监视日志中，P-Scheduler 在重新调度时可以定期读取</p>
+<h4 id="7-3-2-构建权重图"><a href="#7-3-2-构建权重图" class="headerlink" title="7.3.2 构建权重图"></a>7.3.2 构建权重图</h4><p>用上一步得到的profile进行构建</p>
+<h4 id="7-3-3-第一级调度"><a href="#7-3-3-第一级调度" class="headerlink" title="7.3.3 第一级调度"></a>7.3.3 第一级调度</h4><p>减少应用程序节点间通信的第一步是减少执行流应用程序所需的节点数量，P-Scheduler 根据以下等式计算所需节点的数量 n：</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123201338860.png" alt="image-20231123201338860"></p>
+<p>U是task的CPU利用率的总和，C是每个node不过载情况下的容量，假设同构</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123201531899.png" alt="image-20231123201531899"></p>
+<p>Sc 是考虑每个node所有核心的整体 CPU 速度，α是自定义参数</p>
+<p>参数 n 在每个调度周期内随着流应用程序的负载而变化进行更新</p>
+<p>使用K-way partitioning方法进行分区，如7.2节所述</p>
+<h4 id="7-3-4-第二级调度"><a href="#7-3-4-第二级调度" class="headerlink" title="7.3.4 第二级调度"></a>7.3.4 第二级调度</h4><p>第二级调度决定了哪些任务应该分配给同一个worker进程</p>
+<p>worker进程数是一个权衡的问题，太多会增加worker间的通信，太少会单点故障</p>
+<p>P-Scheduler 通过引入阈值 T 使用简单的启发式方法，T代表每个worker的最大Task数，凭经验给出</p>
+<p>worker数量w：</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123203118087.png" alt="image-20231123203118087"></p>
+<p>t代表该节点分配的task数</p>
+<p>再使用K-way partitioning</p>
+<p>最小化worker process间通信</p>
+<h3 id="7-4-P-Scheduler任务分配示例"><a href="#7-4-P-Scheduler任务分配示例" class="headerlink" title="7.4 P-Scheduler任务分配示例"></a>7.4 P-Scheduler任务分配示例</h3><p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123203452662.png" alt="image-20231123203452662"></p>
+<h3 id="7-5-P-Scheduler-vs-最优调度器"><a href="#7-5-P-Scheduler-vs-最优调度器" class="headerlink" title="7.5 P-Scheduler vs 最优调度器"></a>7.5 P-Scheduler vs 最优调度器</h3><h3 id="7-6-实验评估"><a href="#7-6-实验评估" class="headerlink" title="7.6 实验评估"></a>7.6 实验评估</h3><h3 id="7-7-讨论"><a href="#7-7-讨论" class="headerlink" title="7.7 讨论"></a>7.7 讨论</h3><h3 id="7-8-总结"><a href="#7-8-总结" class="headerlink" title="7.8 总结"></a>7.8 总结</h3><h2 id="T3-Scheduler"><a href="#T3-Scheduler" class="headerlink" title="T3-Scheduler"></a>T3-Scheduler</h2><h3 id="8-1-介绍"><a href="#8-1-介绍" class="headerlink" title="8.1 介绍"></a>8.1 介绍</h3><p>拓扑感知+流量感知</p>
+<p>拓扑感知：寻找高度通信task时考虑拓扑图的形状和连通性</p>
+<p>流量感知：监视task间的数据传输速率</p>
+<p>两级调度器：</p>
+<ul>
+<li><p>第一级：将高度通信task放到node中，使用新技术获得了广泛视图</p>
+</li>
+<li><p>第二级：将高度通信task放到worker process中</p>
+</li>
+</ul>
+<p>贡献如下：</p>
+<ul>
+<li>提出T3-Scheduler</li>
+<li>接近最优</li>
+<li>Storm实现</li>
+</ul>
+<h3 id="8-2-T3-Scheduler算法"><a href="#8-2-T3-Scheduler算法" class="headerlink" title="8.2 T3-Scheduler算法"></a>8.2 T3-Scheduler算法</h3><p>前面的k-way partitioning用于生成大致相同部分的分区，异构情况，为了生成不同大小图分区，需要依赖先验信息，依赖于知道在可以划分图之前分配给每个节点的任务数量，很难得到</p>
+<p>T3-Scheduler 使用启发式方法生成不同大小的分区，从而减少部分间通信，然后可以将每个部分分配给相对容量的节点，不需要先验信息</p>
+<p>T3-Scheduler步骤：</p>
+<ol>
+<li><strong>监视：</strong> 与P-Scheduler相同</li>
+<li><strong>构建简化的图：</strong> 使用上一步的profile来构建加权简化图，类似算子图</li>
+<li><strong>节点选择：</strong> T3-Scheduler通过考虑容量来选择节点</li>
+<li><strong>第一级调度：</strong> T3-Scheduler 通过从简化图中找到高度通信任务的子图来确定应该在每个节点内共存哪些任务组</li>
+<li><strong>第二级调度：</strong> 找到worker process数量，进一步划分</li>
+</ol>
+<p>符号表：</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123214313104.png" alt="image-20231123214313104"></p>
+<p>T3-Scheduler算法：</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123214244529.png" alt="image-20231123214244529"></p>
+<p>Storm集群：</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123214338457.png" alt="image-20231123214338457"></p>
+<h4 id="8-2-1-监视"><a href="#8-2-1-监视" class="headerlink" title="8.2.1 监视"></a>8.2.1 监视</h4><p>与P-Scheduler相同，测量负载、通信速率等</p>
+<h4 id="8-2-2-构建简化的图"><a href="#8-2-2-构建简化的图" class="headerlink" title="8.2.2 构建简化的图"></a>8.2.2 构建简化的图</h4><p>类似于算子图，T3-Scheduler将每个算子中的task聚合为单个组，作为顶点，权重为task负载和，边权重为两组之间的聚合通信</p>
+<h4 id="8-2-3-节点选择"><a href="#8-2-3-节点选择" class="headerlink" title="8.2.3 节点选择"></a>8.2.3 节点选择</h4><p>T3-Scheduler将更多通信的task放到更高容量的node中，先填满一个最高的，再往下填</p>
+<h4 id="8-2-4-第一级调度"><a href="#8-2-4-第一级调度" class="headerlink" title="8.2.4 第一级调度"></a>8.2.4 第一级调度</h4><p>目标是将简化图划分到多个node中</p>
+<p>对于每个空的计算节点</p>
+<p>T3-Scheduler将简化图中的最高邻居通信组对合并，形成子图，直到填满node</p>
+<p>填满一个之后再填下一个</p>
+<p><strong>形成子图</strong></p>
+<p>有可能节点容量装不下某个组，或者节点有剩余空间，需要进一步划分出子图，减小粒度</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123221508453.png" alt="image-20231123221508453"></p>
+<p><strong>细粒度组队分区</strong></p>
+<p>按通信量大小进行细分，比如一个组队（A，B），将其划分为$（A_1，B_1）$和$（A_2，B_2）$，对于每个选出的最大通信量task对($t_i$, $t_j$)，有三种情况：</p>
+<ol>
+<li>$t_i$, $t_j$都没被选中过，直接都选，放到$（A_1，B_1）$中</li>
+<li>$t_i$, $t_j$有一个被选过了，比如$t_i$被选过了，则选一个与$t_j$相连的最大通信量的task且没有被选过的，放到$（A_1，B_1）$中</li>
+<li>都选过了，不用选</li>
+</ol>
+<p><strong>组队分区例子</strong></p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123223308756.png" alt="image-20231123223308756"></p>
+<p>node容量4阿尔法，两个分组和已经超了</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123223340888.png" alt="image-20231123223340888"></p>
+<p><strong>细粒度单组分区</strong></p>
+<p>假如组放进去之后没填满，放下一个组进来又超了，需要把外面的组分区</p>
+<p>假设外面的组是A，从里面找通信量最大的，放到$A_1$中</p>
+<p><strong>单组分区例子</strong></p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123224103332.png" alt="image-20231123224103332"></p>
+<h4 id="8-2-5-第二级调度"><a href="#8-2-5-第二级调度" class="headerlink" title="8.2.5 第二级调度"></a>8.2.5 第二级调度</h4><p>与P-Scheduler相同，使用K-way partitioning</p>
+<h3 id="8-3-T3-Scheduler例子"><a href="#8-3-T3-Scheduler例子" class="headerlink" title="8.3 T3-Scheduler例子"></a>8.3 T3-Scheduler例子</h3><p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231123224615993.png" alt="image-20231123224615993"></p>
+<p>每个task负载都是α，每个算子并行度不同，6个node，容量分别为6α，4α，10α，6α，5α，node3配置4个worker，其他配置两个</p>
+<p>第二级调度通过METIS进行分区</p>
+<h3 id="8-4-T3-Scheduler-vs-optimal-scheduler"><a href="#8-4-T3-Scheduler-vs-optimal-scheduler" class="headerlink" title="8.4 T3-Scheduler vs. optimal scheduler"></a>8.4 T3-Scheduler vs. optimal scheduler</h3><h3 id="8-5-实验评估"><a href="#8-5-实验评估" class="headerlink" title="8.5 实验评估"></a>8.5 实验评估</h3><h3 id="8-6-讨论"><a href="#8-6-讨论" class="headerlink" title="8.6 讨论"></a>8.6 讨论</h3><h3 id="8-7-总结"><a href="#8-7-总结" class="headerlink" title="8.7 总结"></a>8.7 总结</h3><h2 id="I-Scheduler"><a href="#I-Scheduler" class="headerlink" title="I-Scheduler"></a>I-Scheduler</h2><h3 id="9-1-介绍"><a href="#9-1-介绍" class="headerlink" title="9.1 介绍"></a>9.1 介绍</h3><p>I-Scheduler同构异构集群均可</p>
+<p>融合高度通信的任务来减少任务图大小，之后使用数学优化软件</p>
+<p>但作业图太大了等情况，无法使用数学软件（执行时间太长），回退启发式方法</p>
+<p>贡献如下：</p>
+<ul>
+<li>提出了 I-Scheduler</li>
+<li>CPLEX 评估</li>
+<li>Storm实现</li>
+</ul>
+<h3 id="9-2-I-Scheduler算法"><a href="#9-2-I-Scheduler算法" class="headerlink" title="9.2 I-Scheduler算法"></a>9.2 I-Scheduler算法</h3><p>步骤：</p>
+<ol>
+<li><strong>监视：</strong> 监视通信速率，负载，与前面一样</li>
+<li><strong>构建加权图：</strong> 利用online profile得到，与前面一样</li>
+<li><strong>第一级调度：</strong> I-Scheduler 通过从加权图中找到高度通信任务的子图来确定node应该存放那些group</li>
+<li><strong>第二级调度：</strong> 高度通信的划分到worker中</li>
+</ol>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231124140956071.png" alt="image-20231124140956071"></p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231124141032360.png" alt="image-20231124141032360"></p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231124151124447.png" alt="image-20231124151124447"></p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231124141135367.png" alt="image-20231124141135367"></p>
+<h4 id="9-2-1-监视"><a href="#9-2-1-监视" class="headerlink" title="9.2.1 监视"></a>9.2.1 监视</h4><p>与 P-Scheduler 和 T3-Scheduler 中的监控步骤类似</p>
+<h4 id="9-2-2-构建加权图"><a href="#9-2-2-构建加权图" class="headerlink" title="9.2.2 构建加权图"></a>9.2.2 构建加权图</h4><p>顶点加权，边加权</p>
+<h4 id="9-2-3-第一级调度"><a href="#9-2-3-第一级调度" class="headerlink" title="9.2.3 第一级调度"></a>9.2.3 第一级调度</h4><p>核心思想：假如用户能忍受的计算时间为θ，则可以得到软件能够忍受的图大小$\phi$，然后将图缩小到$\phi$就行了</p>
+<p>为了缩小的时候也能融合高度通信task，使用K-way partitioning，以最大容量node为粒度</p>
+<p>所以需要先排序node集，$N &#x3D; {(c_1, q_1), (c_2, q_2), . . . , (c_j , q_j )}$ c代表容量，q代表数量，N [i].c代表$N_i$的容量，N [i].q代表这种$N_i$的数量，按容量降序排列</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231124153053412.png" alt="image-20231124153053412"></p>
+<p>第i次迭代，划分出$k_i$个N [i].c的组</p>
+<ul>
+<li><p>$k_i&lt;\phi$：这种情况下，我们可以直接分成$k_i$个部分，交给优化算法计算，但不能这么干，因为精度太差了，我们需要找到一个合适的数量$\beta$，就是说挑出$\beta$个N [i].c大小的组，他们分别融合，剩下的task不融合，这样才能尽可能优化，$\beta$ 要尽可能小，这样task总数t会减小 $\beta × N[i].c$ 个task，并且增加$\beta$个融合后的task，我们希望融合后的task数量等于 $\phi$ ，所以关系为：</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231124154029377.png" alt="image-20231124154029377"></p>
+<p>可以计算得到选择融合数$\beta$为</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231124154104156.png" alt="image-20231124154104156"></p>
+<p>但是还有个问题，如果融合出了 $\beta$ 个N [i].c大小的分组，有可能有N [i].c这个容量的node没有那么多，所以还需要考虑容量为N [i].c的node的数量：</p>
+<p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231124154311535.png" alt="image-20231124154311535"></p>
+<p>最终融合数就是$\alpha$</p>
+<p>剩余任务数t可以更新为：$t \leftarrow t-\alpha × N[i].c$</p>
+<p>继续融合剩余任务t，直到剩余任务数+已融合的组数到达 $\phi$</p>
+</li>
+<li><p>$k_i&gt;\phi$： 无论如何都会超过优化软件的阈值$\phi$，不用优化软件优化了，直接用启发式方法</p>
+</li>
+</ul>
+<h4 id="9-2-4-第二级调度"><a href="#9-2-4-第二级调度" class="headerlink" title="9.2.4 第二级调度"></a>9.2.4 第二级调度</h4><p>与 P-Scheduler 和 T3-Scheduler 类似</p>
+<h3 id="9-3-I-Scheduler例子"><a href="#9-3-I-Scheduler例子" class="headerlink" title="9.3 I-Scheduler例子"></a>9.3 I-Scheduler例子</h3><p><img src="/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/image-20231124155643265.png" alt="image-20231124155643265"></p>
+<p>threshold是8</p>
+<h3 id="9-4-I-Scheduler-vs-optimal-scheduler"><a href="#9-4-I-Scheduler-vs-optimal-scheduler" class="headerlink" title="9.4 I-Scheduler vs. optimal scheduler"></a>9.4 I-Scheduler vs. optimal scheduler</h3><h3 id="9-5-实验评估"><a href="#9-5-实验评估" class="headerlink" title="9.5 实验评估"></a>9.5 实验评估</h3><h3 id="9-6-讨论"><a href="#9-6-讨论" class="headerlink" title="9.6 讨论"></a>9.6 讨论</h3><h3 id="9-7-总结"><a href="#9-7-总结" class="headerlink" title="9.7 总结"></a>9.7 总结</h3><h2 id="结论与未来工作"><a href="#结论与未来工作" class="headerlink" title="结论与未来工作"></a>结论与未来工作</h2><p>略</p>
+
+    </div>
+
+    
+    
+    
+
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/stream-computing/" rel="tag"># stream computing</a>
+              <a href="/tags/schedule/" rel="tag"># schedule</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/09/25/Flink%E6%8B%93%E6%89%91%E4%BF%AE%E6%94%B9/" rel="prev" title="Flink拓扑修改">
+      <i class="fa fa-chevron-left"></i> Flink拓扑修改
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    
+  <div class="comments">
+    <div id="lv-container" data-id="city" data-uid="MTAyMC81OTIwNS8zNTY2Nw=="></div>
+  </div>
+  
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Task-Scheduling-in-Data-Stream-Processing-Systems"><span class="nav-number">1.</span> <span class="nav-text">Task Scheduling in Data Stream Processing Systems</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%8B%E7%BB%8D"><span class="nav-number">1.1.</span> <span class="nav-text">介绍</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-1-%E6%B5%81%E5%A4%84%E7%90%86%E7%B3%BB%E7%BB%9F"><span class="nav-number">1.1.1.</span> <span class="nav-text">1.1 流处理系统</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-2-%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E6%8C%91%E6%88%98"><span class="nav-number">1.1.2.</span> <span class="nav-text">1.2 流处理的挑战</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-3-%E8%B4%A1%E7%8C%AE"><span class="nav-number">1.1.3.</span> <span class="nav-text">1.3 贡献</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-4-%E5%87%BA%E7%89%88"><span class="nav-number">1.1.4.</span> <span class="nav-text">1.4 出版</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-5-%E8%AE%BA%E6%96%87%E6%9E%B6%E6%9E%84"><span class="nav-number">1.1.5.</span> <span class="nav-text">1.5 论文架构</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%83%8C%E6%99%AF"><span class="nav-number">1.2.</span> <span class="nav-text">背景</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-%E5%A4%A7%E6%95%B0%E6%8D%AE%E6%8F%8F%E8%BF%B0"><span class="nav-number">1.2.1.</span> <span class="nav-text">2.1 大数据描述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-2-%E5%A4%A7%E6%95%B0%E6%8D%AE%E5%88%86%E6%9E%90%E6%8A%80%E6%9C%AF"><span class="nav-number">1.2.2.</span> <span class="nav-text">2.2 大数据分析技术</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-3-%E5%A4%A7%E6%95%B0%E6%8D%AE%E5%A4%84%E7%90%86%E6%A1%86%E6%9E%B6%E7%9A%84%E5%87%BA%E7%8E%B0"><span class="nav-number">1.2.3.</span> <span class="nav-text">2.3 大数据处理框架的出现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-4-%E5%A4%A7%E6%95%B0%E6%8D%AE%E5%A4%84%E7%90%86%E6%A1%86%E6%9E%B6"><span class="nav-number">1.2.4.</span> <span class="nav-text">2.4 大数据处理框架</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#2-4-1-%E6%89%B9%E5%A4%84%E7%90%86%E7%B3%BB%E7%BB%9F"><span class="nav-number">1.2.4.1.</span> <span class="nav-text">2.4.1 批处理系统</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-4-2-%E6%B5%81%E5%A4%84%E7%90%86%E7%B3%BB%E7%BB%9F"><span class="nav-number">1.2.4.2.</span> <span class="nav-text">2.4.2 流处理系统</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-4-3-lambda%E6%9E%B6%E6%9E%84"><span class="nav-number">1.2.4.3.</span> <span class="nav-text">2.4.3 lambda架构</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-4-4-%E4%BA%8B%E4%BB%B6%E6%B5%81%E5%A4%84%E7%90%86vs%E5%A4%8D%E6%9D%82%E4%BA%8B%E4%BB%B6%E5%A4%84%E7%90%86"><span class="nav-number">1.2.4.4.</span> <span class="nav-text">2.4.4 事件流处理vs复杂事件处理</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-5-%E6%80%BB%E7%BB%93"><span class="nav-number">1.2.5.</span> <span class="nav-text">2.5 总结</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%9B%B8%E5%85%B3%E5%B7%A5%E4%BD%9C"><span class="nav-number">1.3.</span> <span class="nav-text">相关工作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E6%89%B9%E5%A4%84%E7%90%86%E6%A1%86%E6%9E%B6%E7%9A%84%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6"><span class="nav-number">1.3.1.</span> <span class="nav-text">3.1 批处理框架的任务调度</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E6%B5%81%E5%A4%84%E7%90%86%E6%A1%86%E6%9E%B6%E7%9A%84%E4%BB%BB%E5%8A%A1%E8%B0%83%E5%BA%A6"><span class="nav-number">1.3.2.</span> <span class="nav-text">3.2 流处理框架的任务调度</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-3-%E4%BA%91%E4%B8%8E%E7%BD%91%E6%A0%BC%E8%AE%A1%E7%AE%97%E7%9A%84%E5%B7%A5%E4%BD%9C%E6%B5%81%E8%B0%83%E5%BA%A6"><span class="nav-number">1.3.3.</span> <span class="nav-text">3.3 云与网格计算的工作流调度</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-4-%E8%AE%A8%E8%AE%BA"><span class="nav-number">1.3.4.</span> <span class="nav-text">3.4 讨论</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-5-%E6%80%BB%E7%BB%93"><span class="nav-number">1.3.5.</span> <span class="nav-text">3.5 总结</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%B3%BB%E7%BB%9F%E6%A8%A1%E5%9E%8B%E4%B8%8E%E9%97%AE%E9%A2%98%E6%8F%8F%E8%BF%B0"><span class="nav-number">1.4.</span> <span class="nav-text">系统模型与问题描述</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E7%B3%BB%E7%BB%9F%E6%A8%A1%E5%9E%8B"><span class="nav-number">1.4.1.</span> <span class="nav-text">4.1 系统模型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E9%97%AE%E9%A2%98%E6%8F%8F%E8%BF%B0"><span class="nav-number">1.4.2.</span> <span class="nav-text">4.2 问题描述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E6%80%BB%E7%BB%93"><span class="nav-number">1.4.3.</span> <span class="nav-text">4.3 总结</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Apache-Storm"><span class="nav-number">1.5.</span> <span class="nav-text">Apache Storm</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#5-1-Storm%E9%9B%86%E7%BE%A4"><span class="nav-number">1.5.1.</span> <span class="nav-text">5.1 Storm集群</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-2-Storm%E5%BA%94%E7%94%A8%E5%8F%8A%E5%85%B6%E7%BB%84%E4%BB%B6"><span class="nav-number">1.5.2.</span> <span class="nav-text">5.2 Storm应用及其组件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-3-%E6%B5%81%E5%88%86%E7%BB%84"><span class="nav-number">1.5.3.</span> <span class="nav-text">5.3 流分组</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-4-Storm%E9%BB%98%E8%AE%A4%E8%B0%83%E5%BA%A6%E5%99%A8"><span class="nav-number">1.5.4.</span> <span class="nav-text">5.4 Storm默认调度器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-5-%E6%80%BB%E7%BB%93"><span class="nav-number">1.5.5.</span> <span class="nav-text">5.5 总结</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9E%E9%AA%8C%E8%AE%BE%E7%BD%AE"><span class="nav-number">1.6.</span> <span class="nav-text">实验设置</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#6-1-%E5%AE%9E%E9%AA%8C%E8%A3%85%E7%BD%AE"><span class="nav-number">1.6.1.</span> <span class="nav-text">6.1 实验装置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-2-%E5%BE%AE%E5%9F%BA%E5%87%86"><span class="nav-number">1.6.2.</span> <span class="nav-text">6.2 微基准</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#6-2-1-%E5%B0%86%E6%88%91%E4%BB%AC%E6%8F%90%E5%87%BA%E7%9A%84%E8%B0%83%E5%BA%A6%E5%99%A8%E4%B8%8E%E7%90%86%E8%AE%BA%E4%B8%8A%E6%9C%80%E4%BC%98%E7%9A%84%E8%B0%83%E5%BA%A6%E5%99%A8%E8%BF%9B%E8%A1%8C%E6%AF%94%E8%BE%83"><span class="nav-number">1.6.2.1.</span> <span class="nav-text">6.2.1 将我们提出的调度器与理论上最优的调度器进行比较</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#6-2-2-I-O%E5%AF%86%E9%9B%86%E5%9E%8B%E5%92%8CCPU%E5%AF%86%E9%9B%86%E5%9E%8B"><span class="nav-number">1.6.2.2.</span> <span class="nav-text">6.2.2 I&#x2F;O密集型和CPU密集型</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-3-%E7%8E%B0%E5%AE%9E%E4%B8%96%E7%95%8C%E8%B4%9F%E8%BD%BD"><span class="nav-number">1.6.3.</span> <span class="nav-text">6.3 现实世界负载</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#6-3-1-%E6%99%BA%E8%83%BD%E5%AE%B6%E5%B1%85%E8%B4%9F%E8%8D%B7%E9%A2%84%E6%B5%8B%E5%BA%94%E7%94%A8"><span class="nav-number">1.6.3.1.</span> <span class="nav-text">6.3.1 智能家居负荷预测应用</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#6-3-2-%E7%BA%BD%E7%BA%A6%E5%B8%82%E5%87%BA%E7%A7%9F%E8%BD%A6%E6%95%B0%E6%8D%AE%E6%9C%80%E5%B8%B8%E8%A7%81%E7%9A%84%E8%B7%AF%E7%BA%BF%E5%BA%94%E7%94%A8"><span class="nav-number">1.6.3.2.</span> <span class="nav-text">6.3.2 纽约市出租车数据最常见的路线应用</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-4-%E6%80%BB%E7%BB%93"><span class="nav-number">1.6.4.</span> <span class="nav-text">6.4 总结</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#P-Scheduler"><span class="nav-number">1.7.</span> <span class="nav-text">P-Scheduler</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#7-1-%E4%BB%8B%E7%BB%8D"><span class="nav-number">1.7.1.</span> <span class="nav-text">7.1 介绍</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-2-%E5%9B%BE%E5%88%86%E5%8C%BA"><span class="nav-number">1.7.2.</span> <span class="nav-text">7.2 图分区</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-3-P-Scheduler%E7%AE%97%E6%B3%95"><span class="nav-number">1.7.3.</span> <span class="nav-text">7.3 P-Scheduler算法</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#7-3-1-%E7%9B%91%E8%A7%86"><span class="nav-number">1.7.3.1.</span> <span class="nav-text">7.3.1 监视</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#7-3-2-%E6%9E%84%E5%BB%BA%E6%9D%83%E9%87%8D%E5%9B%BE"><span class="nav-number">1.7.3.2.</span> <span class="nav-text">7.3.2 构建权重图</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#7-3-3-%E7%AC%AC%E4%B8%80%E7%BA%A7%E8%B0%83%E5%BA%A6"><span class="nav-number">1.7.3.3.</span> <span class="nav-text">7.3.3 第一级调度</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#7-3-4-%E7%AC%AC%E4%BA%8C%E7%BA%A7%E8%B0%83%E5%BA%A6"><span class="nav-number">1.7.3.4.</span> <span class="nav-text">7.3.4 第二级调度</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-4-P-Scheduler%E4%BB%BB%E5%8A%A1%E5%88%86%E9%85%8D%E7%A4%BA%E4%BE%8B"><span class="nav-number">1.7.4.</span> <span class="nav-text">7.4 P-Scheduler任务分配示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-5-P-Scheduler-vs-%E6%9C%80%E4%BC%98%E8%B0%83%E5%BA%A6%E5%99%A8"><span class="nav-number">1.7.5.</span> <span class="nav-text">7.5 P-Scheduler vs 最优调度器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-6-%E5%AE%9E%E9%AA%8C%E8%AF%84%E4%BC%B0"><span class="nav-number">1.7.6.</span> <span class="nav-text">7.6 实验评估</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-7-%E8%AE%A8%E8%AE%BA"><span class="nav-number">1.7.7.</span> <span class="nav-text">7.7 讨论</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-8-%E6%80%BB%E7%BB%93"><span class="nav-number">1.7.8.</span> <span class="nav-text">7.8 总结</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#T3-Scheduler"><span class="nav-number">1.8.</span> <span class="nav-text">T3-Scheduler</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#8-1-%E4%BB%8B%E7%BB%8D"><span class="nav-number">1.8.1.</span> <span class="nav-text">8.1 介绍</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-2-T3-Scheduler%E7%AE%97%E6%B3%95"><span class="nav-number">1.8.2.</span> <span class="nav-text">8.2 T3-Scheduler算法</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#8-2-1-%E7%9B%91%E8%A7%86"><span class="nav-number">1.8.2.1.</span> <span class="nav-text">8.2.1 监视</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#8-2-2-%E6%9E%84%E5%BB%BA%E7%AE%80%E5%8C%96%E7%9A%84%E5%9B%BE"><span class="nav-number">1.8.2.2.</span> <span class="nav-text">8.2.2 构建简化的图</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#8-2-3-%E8%8A%82%E7%82%B9%E9%80%89%E6%8B%A9"><span class="nav-number">1.8.2.3.</span> <span class="nav-text">8.2.3 节点选择</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#8-2-4-%E7%AC%AC%E4%B8%80%E7%BA%A7%E8%B0%83%E5%BA%A6"><span class="nav-number">1.8.2.4.</span> <span class="nav-text">8.2.4 第一级调度</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#8-2-5-%E7%AC%AC%E4%BA%8C%E7%BA%A7%E8%B0%83%E5%BA%A6"><span class="nav-number">1.8.2.5.</span> <span class="nav-text">8.2.5 第二级调度</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-3-T3-Scheduler%E4%BE%8B%E5%AD%90"><span class="nav-number">1.8.3.</span> <span class="nav-text">8.3 T3-Scheduler例子</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-4-T3-Scheduler-vs-optimal-scheduler"><span class="nav-number">1.8.4.</span> <span class="nav-text">8.4 T3-Scheduler vs. optimal scheduler</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-5-%E5%AE%9E%E9%AA%8C%E8%AF%84%E4%BC%B0"><span class="nav-number">1.8.5.</span> <span class="nav-text">8.5 实验评估</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-6-%E8%AE%A8%E8%AE%BA"><span class="nav-number">1.8.6.</span> <span class="nav-text">8.6 讨论</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-7-%E6%80%BB%E7%BB%93"><span class="nav-number">1.8.7.</span> <span class="nav-text">8.7 总结</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#I-Scheduler"><span class="nav-number">1.9.</span> <span class="nav-text">I-Scheduler</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#9-1-%E4%BB%8B%E7%BB%8D"><span class="nav-number">1.9.1.</span> <span class="nav-text">9.1 介绍</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-2-I-Scheduler%E7%AE%97%E6%B3%95"><span class="nav-number">1.9.2.</span> <span class="nav-text">9.2 I-Scheduler算法</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#9-2-1-%E7%9B%91%E8%A7%86"><span class="nav-number">1.9.2.1.</span> <span class="nav-text">9.2.1 监视</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#9-2-2-%E6%9E%84%E5%BB%BA%E5%8A%A0%E6%9D%83%E5%9B%BE"><span class="nav-number">1.9.2.2.</span> <span class="nav-text">9.2.2 构建加权图</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#9-2-3-%E7%AC%AC%E4%B8%80%E7%BA%A7%E8%B0%83%E5%BA%A6"><span class="nav-number">1.9.2.3.</span> <span class="nav-text">9.2.3 第一级调度</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#9-2-4-%E7%AC%AC%E4%BA%8C%E7%BA%A7%E8%B0%83%E5%BA%A6"><span class="nav-number">1.9.2.4.</span> <span class="nav-text">9.2.4 第二级调度</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-3-I-Scheduler%E4%BE%8B%E5%AD%90"><span class="nav-number">1.9.3.</span> <span class="nav-text">9.3 I-Scheduler例子</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-4-I-Scheduler-vs-optimal-scheduler"><span class="nav-number">1.9.4.</span> <span class="nav-text">9.4 I-Scheduler vs. optimal scheduler</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-5-%E5%AE%9E%E9%AA%8C%E8%AF%84%E4%BC%B0"><span class="nav-number">1.9.5.</span> <span class="nav-text">9.5 实验评估</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-6-%E8%AE%A8%E8%AE%BA"><span class="nav-number">1.9.6.</span> <span class="nav-text">9.6 讨论</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-7-%E6%80%BB%E7%BB%93"><span class="nav-number">1.9.7.</span> <span class="nav-text">9.7 总结</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BB%93%E8%AE%BA%E4%B8%8E%E6%9C%AA%E6%9D%A5%E5%B7%A5%E4%BD%9C"><span class="nav-number">1.10.</span> <span class="nav-text">结论与未来工作</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="lxisnotlcn"
+      src="/images/jojo.png">
+  <p class="site-author-name" itemprop="name">lxisnotlcn</p>
+  <div class="site-description" itemprop="description">我必将从这片石之海中重获自由</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">8</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">2</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">3</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/lxisnotlcn" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;lxisnotlcn" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:lxisnotlcn@gmail.com" title="E-Mail → mailto:lxisnotlcn@gmail.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2023-11 – 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">lxisnotlcn</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+<div class="theme-info">
+  <div class="powered-by"></div>
+  <span class="post-count">博客全站共17.1k字</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js"></script>
+  <script src="//cdn.jsdelivr.net/gh/fancyapps/fancybox@3/dist/jquery.fancybox.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+<script>
+NexT.utils.loadComments(document.querySelector('#lv-container'), () => {
+  window.livereOptions = {
+    refer: location.pathname.replace(CONFIG.root, '').replace('index.html', '')
+  };
+  (function(d, s) {
+    var j, e = d.getElementsByTagName(s)[0];
+    if (typeof LivereTower === 'function') { return; }
+    j = d.createElement(s);
+    j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+    j.async = true;
+    e.parentNode.insertBefore(j, e);
+  })(document, 'script');
+});
+</script>
+
+</body>
+</html>
