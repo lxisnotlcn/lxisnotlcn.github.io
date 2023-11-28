@@ -2,6 +2,15 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>http://example.com/2023/11/28/MegaphoneOnFlink/</loc>
+    
+    <lastmod>2023-11-28</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
     <loc>http://example.com/2023/11/24/%E6%B5%81%E5%A4%84%E7%90%86%E7%9A%84%E4%B8%89%E7%A7%8D%E8%B0%83%E5%BA%A6%E5%99%A8/</loc>
     
     <lastmod>2023-11-24</lastmod>
@@ -112,7 +121,7 @@
 
   <url>
     <loc>http://example.com/</loc>
-    <lastmod>2023-11-24</lastmod>
+    <lastmod>2023-11-28</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
@@ -120,21 +129,21 @@
   
   <url>
     <loc>http://example.com/tags/stream-computing/</loc>
-    <lastmod>2023-11-24</lastmod>
+    <lastmod>2023-11-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>http://example.com/tags/Flink/</loc>
-    <lastmod>2023-11-24</lastmod>
+    <lastmod>2023-11-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>http://example.com/tags/schedule/</loc>
-    <lastmod>2023-11-24</lastmod>
+    <lastmod>2023-11-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
@@ -143,14 +152,21 @@
   
   <url>
     <loc>http://example.com/categories/Flink/</loc>
-    <lastmod>2023-11-24</lastmod>
+    <lastmod>2023-11-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>http://example.com/categories/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0/</loc>
-    <lastmod>2023-11-24</lastmod>
+    <lastmod>2023-11-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>http://example.com/categories/Flink/%E8%AE%BA%E6%96%87%E5%A4%8D%E7%8E%B0/</loc>
+    <lastmod>2023-11-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
