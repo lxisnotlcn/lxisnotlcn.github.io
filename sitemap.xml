@@ -4,7 +4,7 @@
   <url>
     <loc>http://example.com/2023/11/28/MegaphoneOnFlink/</loc>
     
-    <lastmod>2023-11-28</lastmod>
+    <lastmod>2023-11-29</lastmod>
     
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
@@ -121,7 +121,7 @@
 
   <url>
     <loc>http://example.com/</loc>
-    <lastmod>2023-11-28</lastmod>
+    <lastmod>2023-11-29</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
@@ -129,21 +129,21 @@
   
   <url>
     <loc>http://example.com/tags/stream-computing/</loc>
-    <lastmod>2023-11-28</lastmod>
+    <lastmod>2023-11-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>http://example.com/tags/Flink/</loc>
-    <lastmod>2023-11-28</lastmod>
+    <lastmod>2023-11-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>http://example.com/tags/schedule/</loc>
-    <lastmod>2023-11-28</lastmod>
+    <lastmod>2023-11-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
@@ -152,21 +152,21 @@
   
   <url>
     <loc>http://example.com/categories/Flink/</loc>
-    <lastmod>2023-11-28</lastmod>
+    <lastmod>2023-11-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>http://example.com/categories/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0/</loc>
-    <lastmod>2023-11-28</lastmod>
+    <lastmod>2023-11-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>http://example.com/categories/Flink/%E8%AE%BA%E6%96%87%E5%A4%8D%E7%8E%B0/</loc>
-    <lastmod>2023-11-28</lastmod>
+    <lastmod>2023-11-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
