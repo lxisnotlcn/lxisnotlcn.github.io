@@ -21,27 +21,27 @@
     var CONFIG = {"hostname":"example.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":true,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
   </script>
 
-  <meta name="description" content="Flink Barrier源码Barrier数据结构">
+  <meta name="description" content="Flink 状态源码介绍状态后端与状态相关内容，指导如何创建自定义的状态">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Flink Barrier源码">
-<meta property="og:url" content="http://example.com/2023/07/10/Flink-Barrier%E6%BA%90%E7%A0%81/index.html">
+<meta property="og:title" content="Flink状态源码">
+<meta property="og:url" content="http://example.com/2023/12/14/Flink%E7%8A%B6%E6%80%81%E6%BA%90%E7%A0%81/index.html">
 <meta property="og:site_name" content="lxisnotlcn&#39;s blog">
-<meta property="og:description" content="Flink Barrier源码Barrier数据结构">
+<meta property="og:description" content="Flink 状态源码介绍状态后端与状态相关内容，指导如何创建自定义的状态">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="http://example.com/2023/07/10/Flink-Barrier%E6%BA%90%E7%A0%81/image-20230703202157980.png">
-<meta property="og:image" content="http://example.com/2023/07/10/Flink-Barrier%E6%BA%90%E7%A0%81/image-20230705123507113.png">
-<meta property="og:image" content="http://example.com/2023/07/10/Flink-Barrier%E6%BA%90%E7%A0%81/image-20230709165800048.png">
-<meta property="og:image" content="http://example.com/2023/07/10/Flink-Barrier%E6%BA%90%E7%A0%81/image-20230706213949859.png">
-<meta property="og:image" content="http://example.com/2023/07/10/Flink-Barrier%E6%BA%90%E7%A0%81/image-20230707094758410.png">
-<meta property="article:published_time" content="2023-07-10T07:08:00.000Z">
-<meta property="article:modified_time" content="2023-11-18T08:40:16.668Z">
+<meta property="og:image" content="http://example.com/2023/12/14/Flink%E7%8A%B6%E6%80%81%E6%BA%90%E7%A0%81/image-20231213213224781.png">
+<meta property="og:image" content="http://example.com/2023/12/14/Flink%E7%8A%B6%E6%80%81%E6%BA%90%E7%A0%81/image-20231213213306382.png">
+<meta property="og:image" content="http://example.com/2023/12/14/Flink%E7%8A%B6%E6%80%81%E6%BA%90%E7%A0%81/image-20231213213743510.png">
+<meta property="og:image" content="http://example.com/2023/12/14/Flink%E7%8A%B6%E6%80%81%E6%BA%90%E7%A0%81/image-20231213220024215.png">
+<meta property="og:image" content="http://example.com/2023/12/14/Flink%E7%8A%B6%E6%80%81%E6%BA%90%E7%A0%81/image-20231214121751763.png">
+<meta property="article:published_time" content="2023-12-14T05:03:31.000Z">
+<meta property="article:modified_time" content="2023-12-14T05:05:11.830Z">
 <meta property="article:author" content="lxisnotlcn">
 <meta property="article:tag" content="stream computing">
 <meta property="article:tag" content="Flink">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://example.com/2023/07/10/Flink-Barrier%E6%BA%90%E7%A0%81/image-20230703202157980.png">
+<meta name="twitter:image" content="http://example.com/2023/12/14/Flink%E7%8A%B6%E6%80%81%E6%BA%90%E7%A0%81/image-20231213213224781.png">
 
-<link rel="canonical" href="http://example.com/2023/07/10/Flink-Barrier%E6%BA%90%E7%A0%81/">
+<link rel="canonical" href="http://example.com/2023/12/14/Flink%E7%8A%B6%E6%80%81%E6%BA%90%E7%A0%81/">
 
 
 <script id="page-configurations">
@@ -54,7 +54,7 @@
   };
 </script>
 
-  <title>Flink Barrier源码 | lxisnotlcn's blog</title>
+  <title>Flink状态源码 | lxisnotlcn's blog</title>
   
 
 
@@ -175,7 +175,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2023/07/10/Flink-Barrier%E6%BA%90%E7%A0%81/">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/12/14/Flink%E7%8A%B6%E6%80%81%E6%BA%90%E7%A0%81/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/jojo.png">
@@ -188,7 +188,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          Flink Barrier源码
+          Flink状态源码
         </h1>
 
         <div class="post-meta">
@@ -199,16 +199,10 @@
                 <i class="far fa-calendar"></i>
               </span>
               <span class="post-meta-item-text">发表于</span>
+              
 
-              <time title="创建时间：2023-07-10 15:08:00" itemprop="dateCreated datePublished" datetime="2023-07-10T15:08:00+08:00">2023-07-10</time>
+              <time title="创建时间：2023-12-14 13:03:31 / 修改时间：13:05:11" itemprop="dateCreated datePublished" datetime="2023-12-14T13:03:31+08:00">2023-12-14</time>
             </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2023-11-18 16:40:16" itemprop="dateModified" datetime="2023-11-18T16:40:16+08:00">2023-11-18</time>
-              </span>
             <span class="post-meta-item">
               <span class="post-meta-item-icon">
                 <i class="far fa-folder"></i>
@@ -230,52 +224,48 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <h1 id="Flink-Barrier源码"><a href="#Flink-Barrier源码" class="headerlink" title="Flink Barrier源码"></a>Flink Barrier源码</h1><h2 id="Barrier数据结构"><a href="#Barrier数据结构" class="headerlink" title="Barrier数据结构"></a>Barrier数据结构</h2><span id="more"></span>
+        <h1 id="Flink-状态源码"><a href="#Flink-状态源码" class="headerlink" title="Flink 状态源码"></a>Flink 状态源码</h1><p>介绍状态后端与状态相关内容，指导如何创建自定义的状态</p>
+<span id="more"></span>
 
-<p><img src="/2023/07/10/Flink-Barrier%E6%BA%90%E7%A0%81/image-20230703202157980.png" alt="image-20230703202157980"></p>
-<p>AbstractEvent：This type of event can be used to exchange notification messages between different {@link TaskExecutor} objects at runtime using the communication channels.</p>
-<p>RuntimeEvent：Subclasses of this event are recognized as events exchanged by the core runtime.</p>
-<p>TaskEvent：Subclasses of this event are recognized as custom events that are not part of the core flink runtime.</p>
-<p><img src="/2023/07/10/Flink-Barrier%E6%BA%90%E7%A0%81/image-20230705123507113.png" alt="image-20230705123507113"></p>
-<p><strong>自定义Event：</strong> 继承RuntimeEvent类，需要实现write方法与read方法（用于消息传递时的序列化与反序列化），逻辑可在该Event内自由发挥，但如果实现了write方法与read方法，必须有一个无参数的构造器，否则反序列化会失败</p>
-<p>自定义了一个barrier：</p>
-<p><img src="/2023/07/10/Flink-Barrier%E6%BA%90%E7%A0%81/image-20230709165800048.png" alt="image-20230709165800048"></p>
-<h2 id="使用Barrier"><a href="#使用Barrier" class="headerlink" title="使用Barrier"></a>使用Barrier</h2><h3 id="触发Barrier"><a href="#触发Barrier" class="headerlink" title="触发Barrier"></a>触发Barrier</h3><ol>
-<li><p>非周期性调用Barrier</p>
-<p>需要实现一个外部调用的接口，根据自己需求来触发</p>
+<h2 id="状态接口"><a href="#状态接口" class="headerlink" title="状态接口"></a>状态接口</h2><p>Flink中的状态分为Keyed State和Operator State</p>
+<ul>
+<li><p>Operator State</p>
+<p>记录每个task上的状态，以task为粒度，包括ListState、UnionListState、BroadcastState</p>
 </li>
-<li><p>周期性调用Barrier</p>
-<p>ScheduledExecutor类进行调度，我使用的为ScheduledExecutor.scheduleAtFixedRate()，需要传入一个Runnable的子类作为参数，周期性调用run方法</p>
+<li><p>Keyed State</p>
+<p>以Key为粒度记录状态，包括ValueState、MapState、ListState等</p>
 </li>
-</ol>
-<h3 id="发送Barrier"><a href="#发送Barrier" class="headerlink" title="发送Barrier"></a>发送Barrier</h3><p>CheckpointCoordinator中getTriggerExecutions()获取execution（源算子），在execution中实现逻辑，通过RPC调用到达StreamTask</p>
-<h3 id="Barrier处理逻辑"><a href="#Barrier处理逻辑" class="headerlink" title="Barrier处理逻辑"></a>Barrier处理逻辑</h3><p>到达StreamTask之后，可调用mainMailboxExecutor.execute（）异步执行自己的逻辑</p>
-<h3 id="转发Barrier"><a href="#转发Barrier" class="headerlink" title="转发Barrier"></a>转发Barrier</h3><p>创建Barrier后，调用operatorChain.broadcastEvent或recordWriter.broadcastEvent广播到下游</p>
-<h3 id="接收Barrier"><a href="#接收Barrier" class="headerlink" title="接收Barrier"></a>接收Barrier</h3><p>inputGate.pollNext()获取下一个Event or Buffer，然后进行处理，这里我修改的是CheckpointedInputGate.handleEvent（）</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">else</span> <span class="keyword">if</span>(eventClass == MyTestBarrier.class)&#123;</span><br><span class="line">	<span class="built_in">this</span>.mailboxExecutor.execute(</span><br><span class="line">		() -&gt; &#123;</span><br><span class="line">			<span class="built_in">this</span>.streamTask.handleLxBarrier((MyTestBarrier)(bufferOrEvent.getEvent()));</span><br><span class="line">		&#125;, <span class="string">&quot;handleLxBarrier&quot;</span></span><br><span class="line">	);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</ul>
+<h2 id="状态后端"><a href="#状态后端" class="headerlink" title="状态后端"></a>状态后端</h2><p>三种状态后端：</p>
+<p><img src="/2023/12/14/Flink%E7%8A%B6%E6%80%81%E6%BA%90%E7%A0%81/image-20231213213224781.png" alt="image-20231213213224781"></p>
+<ul>
+<li>MemoryStateBackend：状态存储在taskmanager内存中，检查点存储在jobmanager内存中</li>
+<li>FsStateBackend：状态存储在taskmanager内存中，检查点存储在高可用文件系统中（hdfs等）</li>
+<li>RocksDBStateBackend：状态存储在RocksDB中，检查点存储在高可用文件系统中（hdfs等）</li>
+</ul>
+<p>除此之外，这三种状态后端提供了KeyedStateBackend与OperatorStateBackend管理Keyed State与Operator State</p>
+<p><img src="/2023/12/14/Flink%E7%8A%B6%E6%80%81%E6%BA%90%E7%A0%81/image-20231213213306382.png" alt="image-20231213213306382"></p>
+<ul>
+<li><p>KeyedStateBackend：有HeapKeyedStateBackend与RocksDBKeyedStateBackend，分别对应了状态可以存储在内存中与RocksDB中</p>
+<p><img src="/2023/12/14/Flink%E7%8A%B6%E6%80%81%E6%BA%90%E7%A0%81/image-20231213213743510.png" alt="image-20231213213743510"></p>
+</li>
+</ul>
+<h2 id="创建状态"><a href="#创建状态" class="headerlink" title="创建状态"></a>创建状态</h2><p>AbstractKeyedStateBackend将创建状态的方法推迟到各个具体的KeyedStateBackend中实现，也就是RocksDBKeyedStateBackend与HeapKeyedStateBackend中</p>
+<p>以HeapKeyedStateBackend为例，创建状态：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> Map&lt;Class&lt;? <span class="keyword">extends</span> <span class="title class_">StateDescriptor</span>&gt;, StateFactory&gt; STATE_FACTORIES =</span><br><span class="line">	Stream.of(</span><br><span class="line">		Tuple2.of(ValueStateDescriptor.class, (StateFactory) HeapValueState::create),</span><br><span class="line">		Tuple2.of(ListStateDescriptor.class, (StateFactory) HeapListState::create),</span><br><span class="line">		Tuple2.of(MapStateDescriptor.class, (StateFactory) HeapMapState::create),</span><br><span class="line">		Tuple2.of(AggregatingStateDescriptor.class, (StateFactory) HeapAggregatingState::create),</span><br><span class="line">		Tuple2.of(ReducingStateDescriptor.class, (StateFactory) HeapReducingState::create),</span><br><span class="line">		Tuple2.of(PostFetchValueStateDescriptor.class, (StateFactory) PostFetchHeapValueState::create)</span><br><span class="line">	).collect(Collectors.toMap(t -&gt; t.f0, t -&gt; t.f1));<span class="comment">//状态工厂</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> &lt;N, SV, SEV, S <span class="keyword">extends</span> <span class="title class_">State</span>, IS <span class="keyword">extends</span> <span class="title class_">S</span>&gt; IS <span class="title function_">createInternalState</span><span class="params">(</span></span><br><span class="line"><span class="params">	<span class="meta">@Nonnull</span> TypeSerializer&lt;N&gt; namespaceSerializer,</span></span><br><span class="line"><span class="params">	<span class="meta">@Nonnull</span> StateDescriptor&lt;S, SV&gt; stateDesc,</span></span><br><span class="line"><span class="params">	<span class="meta">@Nonnull</span> StateSnapshotTransformFactory&lt;SEV&gt; snapshotTransformFactory)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">	<span class="type">StateFactory</span> <span class="variable">stateFactory</span> <span class="operator">=</span> STATE_FACTORIES.get(stateDesc.getClass());</span><br><span class="line">	<span class="keyword">if</span> (stateFactory == <span class="literal">null</span>) &#123;</span><br><span class="line">		<span class="type">String</span> <span class="variable">message</span> <span class="operator">=</span> String.format(<span class="string">&quot;State %s is not supported by %s&quot;</span>,</span><br><span class="line">			stateDesc.getClass(), <span class="built_in">this</span>.getClass());</span><br><span class="line">		<span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">FlinkRuntimeException</span>(message);</span><br><span class="line">	&#125;</span><br><span class="line">	StateTable&lt;K, N, SV&gt; stateTable = tryRegisterStateTable(<span class="comment">//先创建状态表</span></span><br><span class="line">		namespaceSerializer, stateDesc, getStateSnapshotTransformFactory(stateDesc, snapshotTransformFactory));</span><br><span class="line">	<span class="keyword">return</span> stateFactory.createState(stateDesc, stateTable, getKeySerializer());<span class="comment">//创建状态</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<h3 id="阻塞Barrier"><a href="#阻塞Barrier" class="headerlink" title="阻塞Barrier"></a>阻塞Barrier</h3><p>阻塞原理为credit-based数据传输，重新消费InputChannel.resumeConsumption()，以及future和InputStatus，涉及网络传输，待研究。。。。。。。。。。</p>
-<p>AbstractInvokable——-&gt;recordWriter.broadcastEvent</p>
-<p>制造barrier，发送到下游：StreamTask.triggerCheckpoint()</p>
-<p>收到barrier，转发到下游：StreamTask.triggerCheckpointOnBarrier()</p>
-<p>向下游广播barrier：OperatorChain.broadcastEvent</p>
-<p><strong>不确定</strong> </p>
-<p>broadcastEvent</p>
-<p>checkpoint周期执行：ScheduledExecutor.scheduleAtFixedRate</p>
-<h1 id="partition源码"><a href="#partition源码" class="headerlink" title="partition源码"></a>partition源码</h1><p><img src="/2023/07/10/Flink-Barrier%E6%BA%90%E7%A0%81/image-20230706213949859.png" alt="image-20230706213949859"></p>
-<ul>
-<li>Intermediate result是逻辑概念</li>
-<li>IntermediateResultPartition对应图中的partition1、2，由ExecutionVertex输出结果（producer），与ExecutionEdge相关联（consumer）</li>
-<li>Subpartition貌似也是逻辑概念</li>
-</ul>
-<p>转换为物理执行图之后</p>
-<p><img src="/2023/07/10/Flink-Barrier%E6%BA%90%E7%A0%81/image-20230707094758410.png" alt="image-20230707094758410"></p>
-<ul>
-<li>ExecutionVertex的实际执行为Execution，有唯一的Execution attempt作为ID，Execution 被调度后在分配的 TaskManager 中启动对应的 Task。 Task 包裹了具有用户执行逻辑的 operator</li>
-<li>ResultPartition代表由一个Task生成的数据，和IntermediateResultPartition一一对应</li>
-<li>ResultSubPartition是Inputgate的生产者</li>
-<li>InputGate有待研究</li>
-</ul>
+<p>根据状态描述符的类型选择不同的工厂方法，先创建状态表，再创建状态</p>
+<p>StateTable为State的实际数据承载部分，维护键值对，State为Flink的接口，提供状态服务</p>
+<p>AbstractKeyedStateBackend内的状态以InternalKvState存储</p>
+<p><img src="/2023/12/14/Flink%E7%8A%B6%E6%80%81%E6%BA%90%E7%A0%81/image-20231213220024215.png" alt="image-20231213220024215"></p>
+<p>InternalKvState继承了State接口，但可以把它看作与State接口同级，InternalKVState 提供了只对 Flink 引擎暴露的接口比如 namespace set&#x2F;get、val get、namespace merging等，Flink不希望将这些接口暴露，State接口暴露出来的方法供用户使用</p>
+<p>以ValueState为例</p>
+<p><img src="/2023/12/14/Flink%E7%8A%B6%E6%80%81%E6%BA%90%E7%A0%81/image-20231214121751763.png" alt="image-20231214121751763"></p>
+<p>如图，ValueState分为RocksDB和Heap两种实现方式，二者都实现了InternalKvState和State接口，实际上省略了一些细节，比如二者都继承自InternalValueState</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>至此，整个创建状态过程已经清晰</p>
+<p>要创建一个新的状态，比如一种新的ValueState，要确定要以哪种方式实现，以Heap实现就继承AbstractHeapState，以RocksDB实现就继承AbstractRocksDBState，还要确定类型，该例子就是ValueState，实现InternalValueState接口，否则实现其他对应的接口（InternalMapState等）</p>
+<p>然后就可以实现自己的状态逻辑了，另外还需要创建对应的StateTable（默认StateTable分为NestedMapsStateTable与CopyOnWriteStateTable，CopyOnWriteStateTable支持异步快照）</p>
+<p>使用状态需要先实现各自的工厂方法，状态后端会根据状态描述符的不同调用不同的工厂方法</p>
 
     </div>
 
@@ -297,13 +287,10 @@
         
     <div class="post-nav">
       <div class="post-nav-item">
-    <a href="/2023/07/01/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9ADalton/" rel="prev" title="论文笔记：Dalton">
-      <i class="fa fa-chevron-left"></i> 论文笔记：Dalton
+    <a href="/2023/11/28/MegaphoneOnFlink/" rel="prev" title="论文复现：基于Flink实现Megaphone">
+      <i class="fa fa-chevron-left"></i> 论文复现：基于Flink实现Megaphone
     </a></div>
-      <div class="post-nav-item">
-    <a href="/2023/08/14/%E8%AE%BA%E6%96%87%E7%AC%94%E8%AE%B0%EF%BC%9A%E6%B5%81%E7%B3%BB%E7%BB%9F%E5%A4%9A%E7%BA%A7%E5%8D%8F%E5%90%8C/" rel="next" title="论文笔记：流系统多级协同">
-      论文笔记：流系统多级协同 <i class="fa fa-chevron-right"></i>
-    </a></div>
+      <div class="post-nav-item"></div>
     </div>
       </footer>
     
@@ -367,7 +354,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Flink-Barrier%E6%BA%90%E7%A0%81"><span class="nav-number">1.</span> <span class="nav-text">Flink Barrier源码</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Barrier%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-number">1.1.</span> <span class="nav-text">Barrier数据结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8Barrier"><span class="nav-number">1.2.</span> <span class="nav-text">使用Barrier</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A7%A6%E5%8F%91Barrier"><span class="nav-number">1.2.1.</span> <span class="nav-text">触发Barrier</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%91%E9%80%81Barrier"><span class="nav-number">1.2.2.</span> <span class="nav-text">发送Barrier</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Barrier%E5%A4%84%E7%90%86%E9%80%BB%E8%BE%91"><span class="nav-number">1.2.3.</span> <span class="nav-text">Barrier处理逻辑</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BD%AC%E5%8F%91Barrier"><span class="nav-number">1.2.4.</span> <span class="nav-text">转发Barrier</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%A5%E6%94%B6Barrier"><span class="nav-number">1.2.5.</span> <span class="nav-text">接收Barrier</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%98%BB%E5%A1%9EBarrier"><span class="nav-number">1.2.6.</span> <span class="nav-text">阻塞Barrier</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#partition%E6%BA%90%E7%A0%81"><span class="nav-number">2.</span> <span class="nav-text">partition源码</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Flink-%E7%8A%B6%E6%80%81%E6%BA%90%E7%A0%81"><span class="nav-number">1.</span> <span class="nav-text">Flink 状态源码</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%8A%B6%E6%80%81%E6%8E%A5%E5%8F%A3"><span class="nav-number">1.1.</span> <span class="nav-text">状态接口</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%8A%B6%E6%80%81%E5%90%8E%E7%AB%AF"><span class="nav-number">1.2.</span> <span class="nav-text">状态后端</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%9B%E5%BB%BA%E7%8A%B6%E6%80%81"><span class="nav-number">1.3.</span> <span class="nav-text">创建状态</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-number">1.4.</span> <span class="nav-text">总结</span></a></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
